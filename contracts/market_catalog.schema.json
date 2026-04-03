@@ -1,0 +1,35 @@
+{
+  "title": "market_catalog",
+  "type": "object",
+  "required": [
+    "dataset",
+    "schema_version",
+    "market",
+    "quote_currency",
+    "base_currency",
+    "korean_name",
+    "english_name",
+    "market_warning",
+    "paper_universe",
+    "captured_at",
+    "source",
+    "capture_id",
+    "ingested_at"
+  ],
+  "properties": {
+    "dataset": { "const": "market_catalog" },
+    "schema_version": { "type": "string" },
+    "market": { "type": "string" },
+    "quote_currency": { "type": "string" },
+    "base_currency": { "type": "string" },
+    "korean_name": { "type": "string" },
+    "english_name": { "type": "string" },
+    "market_warning": { "type": "string" },
+    "paper_universe": { "type": "boolean" },
+    "captured_at": { "type": "string" },
+    "source": { "type": "string" },
+    "capture_id": { "type": "string" },
+    "ingested_at": { "type": "string" }
+  }
+}
+

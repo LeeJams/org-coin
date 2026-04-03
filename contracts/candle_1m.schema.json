@@ -1,0 +1,39 @@
+{
+  "title": "candle_1m",
+  "type": "object",
+  "required": [
+    "dataset",
+    "schema_version",
+    "market",
+    "unit_minutes",
+    "candle_timestamp_ms",
+    "exchange_timestamp_raw",
+    "open_price",
+    "high_price",
+    "low_price",
+    "close_price",
+    "candle_acc_trade_price",
+    "candle_acc_trade_volume",
+    "source",
+    "capture_id",
+    "ingested_at"
+  ],
+  "properties": {
+    "dataset": { "const": "candle_1m" },
+    "schema_version": { "type": "string" },
+    "market": { "type": "string" },
+    "unit_minutes": { "type": "integer" },
+    "candle_timestamp_ms": { "type": "integer" },
+    "exchange_timestamp_raw": { "type": "string" },
+    "open_price": { "type": "number" },
+    "high_price": { "type": "number" },
+    "low_price": { "type": "number" },
+    "close_price": { "type": "number" },
+    "candle_acc_trade_price": { "type": "number" },
+    "candle_acc_trade_volume": { "type": "number" },
+    "source": { "type": "string" },
+    "capture_id": { "type": "string" },
+    "ingested_at": { "type": "string" }
+  }
+}
+

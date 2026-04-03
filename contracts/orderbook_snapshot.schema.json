@@ -1,0 +1,39 @@
+{
+  "title": "orderbook_snapshot",
+  "type": "object",
+  "required": [
+    "dataset",
+    "schema_version",
+    "market",
+    "event_timestamp_ms",
+    "exchange_timestamp_raw",
+    "aggregation_level",
+    "total_ask_size",
+    "total_bid_size",
+    "best_ask_price",
+    "best_bid_price",
+    "level_count",
+    "stream_type",
+    "source",
+    "capture_id",
+    "ingested_at"
+  ],
+  "properties": {
+    "dataset": { "const": "orderbook_snapshot" },
+    "schema_version": { "type": "string" },
+    "market": { "type": "string" },
+    "event_timestamp_ms": { "type": "integer" },
+    "exchange_timestamp_raw": { "type": "string" },
+    "aggregation_level": { "type": "number" },
+    "total_ask_size": { "type": "number" },
+    "total_bid_size": { "type": "number" },
+    "best_ask_price": { "type": "number" },
+    "best_bid_price": { "type": "number" },
+    "level_count": { "type": "integer" },
+    "stream_type": { "type": "string" },
+    "source": { "type": "string" },
+    "capture_id": { "type": "string" },
+    "ingested_at": { "type": "string" }
+  }
+}
+

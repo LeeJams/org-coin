@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://org-coin.local/schemas/order-ledger-event.schema.json",
+  "title": "OrderLedgerEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "occurredAt",
+    "mode",
+    "market"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "decision",
+        "order",
+        "fill",
+        "kill_switch"
+      ]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "enum": [
+        "dry_run",
+        "paper",
+        "live"
+      ]
+    },
+    "market": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "signalId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

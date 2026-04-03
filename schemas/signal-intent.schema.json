@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://org-coin.local/schemas/signal-intent.schema.json",
+  "title": "SignalIntent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "signalId",
+    "strategyId",
+    "market",
+    "side",
+    "sizing",
+    "confidence",
+    "generatedAt",
+    "expiresAt",
+    "maxSlippageBps",
+    "reasonCodes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "signalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "strategyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "market": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,10}-[A-Z0-9]{2,20}$"
+    },
+    "side": {
+      "enum": [
+        "buy",
+        "sell"
+      ]
+    },
+    "sizing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis",
+        "value"
+      ],
+      "properties": {
+        "basis": {
+          "enum": [
+            "quote_notional",
+            "base_quantity",
+            "position_fraction"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "maxSlippageBps": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "reasonCodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reduceOnly": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}
