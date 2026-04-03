@@ -2,6 +2,8 @@
 
 Public-market data ingestion and paper-trading execution primitives for the first Bithumb milestone.
 
+Korean guide: [`README.ko.md`](README.ko.md)
+
 The current repository is intentionally narrow:
 
 - Bithumb public REST and public WebSocket only
