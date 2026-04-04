@@ -41,6 +41,34 @@ Current paper-runner semantics:
 - `MAX_POSITION_NOTIONAL_BY_MARKET_JSON` merges market-specific cap overrides on top of the default or global cap baseline
 - `PAPER_SESSION_ARTIFACTS_DIR` controls where persisted session reports, reject ledgers, and NDJSON ledger evidence are written
 
+## Managed dry_run service inputs
+
+These values drive the `pm2`-managed `dry_run` loop in `dist/src/cli/run-dry-run-service.js`.
+
+- `DRY_RUN_BASE_DIR`
+- `DRY_RUN_ENTRY_PROFILE`
+- `DRY_RUN_INITIAL_CASH_KRW`
+- `DRY_RUN_LOOP_INTERVAL_SECONDS`
+- `DRY_RUN_LOG_DIR`
+- `DRY_RUN_CYCLE_LOG_FILE`
+- `DRY_RUN_PYTHON_BIN`
+- `DRY_RUN_MARKETS`
+- `DRY_RUN_FRESHNESS_SLA_MS`
+- `DRY_RUN_CANDLE_COUNT`
+- `DRY_RUN_TRADE_COUNT`
+- `DRY_RUN_WS_SECONDS`
+- `DRY_RUN_TRADE_WARMUP_SECONDS`
+- `DRY_RUN_BOOTSTRAP_ITERATIONS`
+- `DRY_RUN_BOOTSTRAP_INTERVAL_SECONDS`
+- `DRY_RUN_WS_CHANNELS`
+
+Current managed-service semantics:
+
+- The service captures public market data, builds a replay scenario, executes it in `dry_run`, and appends one structured summary line per cycle to `DRY_RUN_LOG_DIR/DRY_RUN_CYCLE_LOG_FILE`
+- The PM2 ecosystem file also keeps stdout/stderr under `var/log/pm2/`
+- `TRADING_MODE=paper` can remain the repo default in `.env`; the managed service forces `dry_run` for its own execution path
+- Exchange secrets remain ignored because live execution is still disabled
+
 For the current paper-only repo state, leave `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` blank in the local `.env` file.
 
 None of these secrets or runtime values should be stored in source, Paperclip issue bodies, or plan documents.

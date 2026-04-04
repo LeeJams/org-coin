@@ -5,11 +5,21 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "paper:session": "npm run build && node dist/src/cli/run-paper-session.js",
+    "prepaper:session": "npm run build",
+    "paper:session": "node dist/src/cli/run-paper-session.js",
+    "predry-run:service": "npm run build",
+    "dry-run:service": "node dist/src/cli/run-dry-run-service.js",
+    "prepare:runtime-dirs": "node scripts/ensure-runtime-dirs.mjs",
+    "pm2:start:dry-run": "npm run prepare:runtime-dirs && npm run build && pm2 start ecosystem.config.cjs --only dry-run-manager",
+    "pm2:restart:dry-run": "npm run prepare:runtime-dirs && npm run build && node scripts/restart-pm2-dry-run.mjs",
+    "pm2:stop:dry-run": "pm2 delete dry-run-manager",
+    "pm2:status:dry-run": "pm2 show dry-run-manager",
+    "pm2:logs:dry-run": "pm2 logs dry-run-manager",
     "test": "npm run build && node --test dist/test/*.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "pm2": "^6.0.14",
     "typescript": "^6.0.2"
   }
 }

@@ -151,11 +151,26 @@ python -m unittest discover -s tests -v
 TRADING_MODE=dry_run npm run paper:session -- var/data/replay/scenarios/session-<run-id>.json
 ```
 
+관리형 `dry_run` 루프를 한 번만 실행하려면:
+
+```bash
+npm run dry-run:service -- --once
+```
+
+지속적으로 로그를 쌓는 `pm2` 관리 루프를 시작하려면:
+
+```bash
+npm run pm2:start:dry-run
+```
+
+이 서비스는 `bootstrap -> build-session-scenario -> dry_run paper-session` 순서로 한 사이클을 실행하고, 요약 NDJSON은 `var/log/dry-run-service/cycles.ndjson`, PM2 표준 출력/오류 로그는 `var/log/pm2/`, 일반 세션 산출물은 `var/paper-sessions/` 아래에 남깁니다.
+
 ## 런타임과 비밀값 처리
 
 현재의 페이퍼 우선 범위에서는 거래소 API 자격 증명이 필요하지 않습니다.
 
 - 향후 런타임 입력은 [`docs/runtime-contract.md`](docs/runtime-contract.md)에 정리되어 있습니다.
+- PM2 기반 dry_run 운영 가이드는 [`docs/pm2-dry-run.md`](docs/pm2-dry-run.md)에 있습니다.
 - passive feature 수집 운영 가이드는 [`docs/passive-feature-collection.md`](docs/passive-feature-collection.md)에 정리되어 있습니다.
 - `dry_run`은 기준 호가로 즉시 체결되는 낙관적 검증 모드이고, `paper`는 슬리피지와 수수료를 반영한 보수적 시뮬레이터입니다.
 - 예시 환경 변수 템플릿은 [`.env.example`](.env.example)에 있습니다.

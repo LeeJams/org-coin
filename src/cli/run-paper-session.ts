@@ -1,11 +1,9 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { validatePaperSessionScenario } from "../contracts/paper-session.js";
-import { persistPaperSessionReport } from "../execution/paper-session-artifacts.js";
-import { createPaperSessionRunner } from "../execution/session-runner.js";
-import { loadExecutionRuntimeConfig } from "../runtime/config.js";
+import {
+  executePaperSessionScenario,
+  InvalidPaperSessionScenarioError,
+} from "../execution/run-paper-session.js";
 
 export async function runPaperSessionCli(
   argv: string[] = process.argv.slice(2),
@@ -19,41 +17,27 @@ export async function runPaperSessionCli(
     return 1;
   }
 
-  const resolvedScenarioPath = resolve(process.cwd(), scenarioPath);
-  const raw = await readFile(resolvedScenarioPath, "utf8");
-  const parsed = JSON.parse(raw) as unknown;
-  const validation = validatePaperSessionScenario(parsed);
+  try {
+    const persistedReport = await executePaperSessionScenario({ scenarioPath });
+    process.stdout.write(`${JSON.stringify(persistedReport, null, 2)}\n`);
+    return persistedReport.reconciliation.ok ? 0 : 2;
+  } catch (error: unknown) {
+    if (error instanceof InvalidPaperSessionScenarioError) {
+      console.error(
+        JSON.stringify(
+          {
+            error: "invalid_paper_session_scenario",
+            issues: error.issues,
+          },
+          null,
+          2,
+        ),
+      );
+      return 1;
+    }
 
-  if (!validation.ok) {
-    console.error(
-      JSON.stringify(
-        {
-          error: "invalid_paper_session_scenario",
-          issues: validation.issues,
-        },
-        null,
-        2,
-      ),
-    );
-    return 1;
+    throw error;
   }
-
-  const runtimeConfig = loadExecutionRuntimeConfig();
-  const runner = createPaperSessionRunner(runtimeConfig, {
-    clock: validation.value.clockAt
-      ? () => new Date(validation.value.clockAt!)
-      : undefined,
-    portfolio: validation.value.initialPortfolio,
-  });
-  const report = await runner.runScenario(validation.value);
-  const persistedReport = await persistPaperSessionReport({
-    report,
-    baseDir: runtimeConfig.paperSessionArtifactsDir,
-    scenarioPath: resolvedScenarioPath,
-  });
-
-  process.stdout.write(`${JSON.stringify(persistedReport, null, 2)}\n`);
-  return persistedReport.reconciliation.ok ? 0 : 2;
 }
 
 const isMain =

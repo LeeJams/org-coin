@@ -165,11 +165,26 @@ TRADING_MODE=dry_run npm run paper:session -- var/data/replay/scenarios/session-
 
 The session runner auto-loads `.env` from the repo root when present, validates the scenario against the TypeScript-side paper-session contract, honors an optional deterministic `clockAt` replay timestamp, persists JSON/Markdown/NDJSON evidence under `var/paper-sessions/`, and exits with status `2` when reconciliation fails. `dry_run` now fills at the reference price with no fee or liquidity impact, while `paper` remains the slippage- and fee-aware simulator.
 
+Run one managed `dry_run` capture-to-session cycle locally:
+
+```bash
+npm run dry-run:service -- --once
+```
+
+Start the continuous `pm2`-managed `dry_run` loop:
+
+```bash
+npm run pm2:start:dry-run
+```
+
+The managed service runs `bootstrap -> build-session-scenario -> dry_run paper-session` in one loop, appends a structured cycle summary to `var/log/dry-run-service/cycles.ndjson`, keeps PM2 stdout/stderr in `var/log/pm2/`, and still writes the normal session artifacts under `var/paper-sessions/`.
+
 ## Runtime and secret handling
 
 This repository does not require exchange API credentials for the current paper-first scope.
 
 - Future runtime inputs are documented in [`docs/runtime-contract.md`](docs/runtime-contract.md)
+- PM2 dry-run service operations live in [`docs/pm2-dry-run.md`](docs/pm2-dry-run.md)
 - Passive feature collection guidance lives in [`docs/passive-feature-collection.md`](docs/passive-feature-collection.md)
 - Runtime loading lives in [`src/runtime/config.ts`](src/runtime/config.ts)
 - Session input shape is documented in [`schemas/paper-session-scenario.schema.json`](schemas/paper-session-scenario.schema.json)
