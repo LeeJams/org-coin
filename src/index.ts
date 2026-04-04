@@ -4,6 +4,7 @@ export * from "./contracts/signal-intent.js";
 export * from "./execution/kill-switch.js";
 export * from "./execution/ledger.js";
 export * from "./execution/order-manager.js";
+export * from "./execution/paper-session-artifacts.js";
 export * from "./execution/reject-reason.js";
 export * from "./execution/session-runner.js";
 export * from "./execution/types.js";

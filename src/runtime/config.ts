@@ -25,6 +25,7 @@ export interface ExecutionRuntimeConfig {
   endpoints: ExecutionRuntimeEndpoints;
   secrets: ExecutionRuntimeSecrets;
   riskPolicy: RiskPolicy;
+  paperSessionArtifactsDir: string;
   envFilePath?: string;
 }
 
@@ -80,6 +81,36 @@ function parsePositiveIntegerOrDefault(
   }
 
   return parsed;
+}
+
+function parsePositiveNumberRecord(
+  value: string | undefined,
+  key: string,
+): Record<string, number> {
+  if (value === undefined || value.trim().length === 0) {
+    return {};
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`${key} must be a valid JSON object`);
+  }
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${key} must be a JSON object of positive numbers`);
+  }
+
+  return Object.fromEntries(
+    Object.entries(parsed).map(([market, rawValue]) => {
+      if (typeof rawValue !== "number" || !Number.isFinite(rawValue) || rawValue <= 0) {
+        throw new Error(`${key}.${market} must be a positive finite number`);
+      }
+
+      return [market, rawValue];
+    }),
+  );
 }
 
 export function parseDotenv(contents: string): Record<string, string> {
@@ -174,6 +205,16 @@ export function loadExecutionRuntimeConfig(
     "MAX_POSITION_NOTIONAL_KRW",
     0,
   );
+  const marketPositionCapOverrides = parsePositiveNumberRecord(
+    env.MAX_POSITION_NOTIONAL_BY_MARKET_JSON,
+    "MAX_POSITION_NOTIONAL_BY_MARKET_JSON",
+  );
+  const basePositionCaps =
+    globalPositionCap > 0
+      ? Object.fromEntries(
+          defaults.allowedMarkets.map((market) => [market, globalPositionCap]),
+        )
+      : defaults.maxPositionNotionalByMarket;
 
   return {
     tradingMode: tradingModeRaw,
@@ -187,9 +228,13 @@ export function loadExecutionRuntimeConfig(
         "wss://ws-api.bithumb.com/websocket/v1",
     },
     secrets: {
-      bithumbAccessKey: asNonEmptyString(env.BITHUMB_ACCESS_KEY),
-      bithumbSecretKey: asNonEmptyString(env.BITHUMB_SECRET_KEY),
+      // Live rollout is still blocked in this repo, so do not propagate configured
+      // exchange secrets into paper or dry-run runtime objects.
     },
+    paperSessionArtifactsDir: resolve(
+      cwd,
+      asNonEmptyString(env.PAPER_SESSION_ARTIFACTS_DIR) ?? "var/paper-sessions",
+    ),
     riskPolicy: {
       ...defaults,
       maxOrderNotional: parsePositiveNumberOrDefault(
@@ -197,12 +242,10 @@ export function loadExecutionRuntimeConfig(
         "MAX_ORDER_NOTIONAL_KRW",
         defaults.maxOrderNotional,
       ),
-      maxPositionNotionalByMarket:
-        globalPositionCap > 0
-          ? Object.fromEntries(
-              defaults.allowedMarkets.map((market) => [market, globalPositionCap]),
-            )
-          : defaults.maxPositionNotionalByMarket,
+      maxPositionNotionalByMarket: {
+        ...basePositionCaps,
+        ...marketPositionCapOverrides,
+      },
       maxDailyLoss: parsePositiveNumberOrDefault(
         env.MAX_DAILY_LOSS_KRW,
         "MAX_DAILY_LOSS_KRW",

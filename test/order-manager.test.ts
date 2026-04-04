@@ -174,3 +174,21 @@ test("duplicate signal ids are rejected", async () => {
 
   assert.equal(second.reasons[0]?.code, "duplicate_signal");
 });
+
+test("submitSignal uses receivedAt for replay-time risk checks", async () => {
+  const manager = createDryRunOrderManager({
+    clock: () => new Date("2026-04-02T12:05:00.000Z"),
+  });
+
+  const decision = await manager.submitSignal(buildBuySignal("sig-replay-time"), {
+    marketSnapshot: buildSnapshot(),
+    receivedAt: "2026-04-02T12:00:01.000Z",
+  });
+
+  assert.equal(decision.accepted, true);
+  if (!decision.accepted) {
+    return;
+  }
+
+  assert.equal(decision.order.createdAt, "2026-04-02T12:00:01.000Z");
+});

@@ -12,6 +12,7 @@ from .config import (
     parse_markets,
 )
 from .observability import Observability
+from .passive_features import build_passive_feature_report
 from .pipeline import (
     build_quality_report,
     build_replay_manifest,
@@ -51,6 +52,13 @@ def build_parser() -> argparse.ArgumentParser:
     quality.add_argument("--run-id", required=True)
     quality.add_argument("--freshness-sla-ms", type=int, default=DEFAULT_FRESHNESS_SLA_MS)
 
+    passive_features = subparsers.add_parser(
+        "build-passive-feature-report",
+        help="build the derived passive-feature dataset and distribution report",
+    )
+    passive_features.add_argument("--base-dir", type=Path, default=DEFAULT_DATA_DIR)
+    passive_features.add_argument("--run-id", required=True)
+
     repair = subparsers.add_parser("repair-gap", help="record a gap-repair attempt")
     add_common(repair)
     repair.add_argument("--dataset", required=True)
@@ -80,6 +88,11 @@ def main(argv: list[str] | None = None) -> int:
         print(markdown_path)
         return 0
 
+    if args.command == "build-passive-feature-report":
+        _, markdown_path = build_passive_feature_report(args.base_dir, args.run_id)
+        print(markdown_path)
+        return 0
+
     if args.command == "bootstrap":
         channels = [item.strip() for item in args.ws_channels.split(",") if item.strip()]
         result = run_bootstrap_session(
@@ -95,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(result["manifest_path"])
         print(result["quality_markdown_path"])
+        print(result["passive_feature_markdown_path"])
         return 0
 
     run_id = new_capture_id()

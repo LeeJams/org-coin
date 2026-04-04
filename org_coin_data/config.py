@@ -17,6 +17,7 @@ SUPPORTED_DATASETS = {
     "ticker_event",
     "orderbook_snapshot",
     "orderbook_level",
+    "passive_feature_snapshot",
 }
 
 

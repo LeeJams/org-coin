@@ -1,6 +1,6 @@
 import type { MarketSnapshot } from "../contracts/market-snapshot.js";
 import type { SignalIntent, SignalSide } from "../contracts/signal-intent.js";
-import type { RejectReason } from "./reject-reason.js";
+import type { RejectReason, RejectReasonCode } from "./reject-reason.js";
 
 export type ExecutionMode = "dry_run" | "paper" | "live";
 export type OrderStatus =
@@ -108,6 +108,57 @@ export interface DecisionRecord {
   orderId?: string;
 }
 
+export interface LedgerSnapshot {
+  decisions: DecisionRecord[];
+  orders: OrderRecord[];
+  fills: FillRecord[];
+}
+
+export interface RejectLedgerEntry {
+  decisionId: string;
+  signalId?: string;
+  market?: string;
+  createdAt: string;
+  reasonCodes: RejectReasonCode[];
+  reasons: RejectReason[];
+}
+
+export interface RejectLedgerMarketSummary {
+  total: number;
+  reasons: Partial<Record<RejectReasonCode, number>>;
+}
+
+export interface RejectLedgerReasonSummary {
+  total: number;
+  markets: Record<string, number>;
+}
+
+export interface RejectLedgerSummary {
+  totalRejectedDecisions: number;
+  byMarket: Record<string, RejectLedgerMarketSummary>;
+  byReason: Partial<Record<RejectReasonCode, RejectLedgerReasonSummary>>;
+  entries: RejectLedgerEntry[];
+}
+
+export interface OrderLedgerEvent {
+  type: "decision" | "order" | "fill" | "kill_switch";
+  occurredAt: string;
+  mode: ExecutionMode;
+  market?: string;
+  orderId?: string;
+  signalId?: string;
+  status?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface PaperSessionArtifactPaths {
+  sessionDir: string;
+  reportPath: string;
+  reportMarkdownPath: string;
+  ledgerPath: string;
+  rejectLedgerPath: string;
+}
+
 export interface ExecutionResult {
   order: OrderRecord;
   fills: FillRecord[];
@@ -160,11 +211,7 @@ export interface OrderManager {
     cancelledAt?: string,
   ): Promise<OrderRecord | null>;
   reconcileSession(at?: string): ReconciliationReport;
-  getLedgerSnapshot(): {
-    decisions: DecisionRecord[];
-    orders: OrderRecord[];
-    fills: FillRecord[];
-  };
+  getLedgerSnapshot(): LedgerSnapshot;
   getPortfolioState(): PortfolioState;
 }
 

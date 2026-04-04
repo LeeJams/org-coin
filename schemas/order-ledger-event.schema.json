@@ -7,8 +7,7 @@
   "required": [
     "type",
     "occurredAt",
-    "mode",
-    "market"
+    "mode"
   ],
   "properties": {
     "type": {

@@ -85,6 +85,15 @@ function mergePolicy(policy?: Partial<RiskPolicy>): RiskPolicy {
   };
 }
 
+function parseEventTime(value: string | undefined): Date | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 class ManagedOrderManager implements OrderManager {
   private readonly ledger: ReconciliationLedger;
   private readonly killSwitch: KillSwitch;
@@ -107,7 +116,9 @@ class ManagedOrderManager implements OrderManager {
     input: unknown,
     context: SubmitSignalContext,
   ): Promise<OrderManagerDecision> {
-    const now = (this.options.clock ?? (() => new Date()))();
+    const now =
+      parseEventTime(context.receivedAt) ??
+      (this.options.clock ?? (() => new Date()))();
     const decisionId = randomUUID();
     const guardReason = this.killSwitch.guard();
 

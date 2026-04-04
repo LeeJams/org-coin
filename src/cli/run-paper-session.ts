@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { validatePaperSessionScenario } from "../contracts/paper-session.js";
+import { persistPaperSessionReport } from "../execution/paper-session-artifacts.js";
 import { createPaperSessionRunner } from "../execution/session-runner.js";
 import { loadExecutionRuntimeConfig } from "../runtime/config.js";
 
@@ -45,9 +46,14 @@ export async function runPaperSessionCli(
     portfolio: validation.value.initialPortfolio,
   });
   const report = await runner.runScenario(validation.value);
+  const persistedReport = await persistPaperSessionReport({
+    report,
+    baseDir: runtimeConfig.paperSessionArtifactsDir,
+    scenarioPath: resolvedScenarioPath,
+  });
 
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  return report.reconciliation.ok ? 0 : 2;
+  process.stdout.write(`${JSON.stringify(persistedReport, null, 2)}\n`);
+  return persistedReport.reconciliation.ok ? 0 : 2;
 }
 
 const isMain =

@@ -13,6 +13,7 @@ Current enforced behavior:
 
 - `TRADING_MODE=live` throws at startup
 - `ENABLE_LIVE_EXECUTION=true` throws at startup
+- Configured `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` are ignored while live execution stays disabled
 
 ## Future live-secret contract
 
@@ -26,12 +27,18 @@ Current enforced behavior:
 - `MAX_DAILY_LOSS_KRW`
 - `MAX_ORDER_NOTIONAL_KRW`
 - `MAX_POSITION_NOTIONAL_KRW`
+- `MAX_POSITION_NOTIONAL_BY_MARKET_JSON`
 - `DATA_STALE_AFTER_MS`
 - `KILL_SWITCH_REJECT_STREAK`
+- `PAPER_SESSION_ARTIFACTS_DIR`
 
 Current paper-runner semantics:
 
 - `MAX_DAILY_LOSS_KRW`, `MAX_ORDER_NOTIONAL_KRW`, `DATA_STALE_AFTER_MS`, and `KILL_SWITCH_REJECT_STREAK` fall back to built-in paper defaults when unset
 - `MAX_POSITION_NOTIONAL_KRW=0` keeps the built-in per-market paper caps; any positive value overrides all market caps uniformly
+- `MAX_POSITION_NOTIONAL_BY_MARKET_JSON` merges market-specific cap overrides on top of the default or global cap baseline
+- `PAPER_SESSION_ARTIFACTS_DIR` controls where persisted session reports, reject ledgers, and NDJSON ledger evidence are written
+
+For the current paper-only repo state, leave `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` blank in the local `.env` file.
 
 None of these secrets or runtime values should be stored in source, Paperclip issue bodies, or plan documents.

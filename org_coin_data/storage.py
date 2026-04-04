@@ -75,6 +75,10 @@ def replay_quality_report_path(base_dir: Path, run_id: str, suffix: str) -> Path
     return base_dir / "replay" / "reports" / f"quality-{run_id}.{suffix}"
 
 
+def replay_passive_feature_report_path(base_dir: Path, run_id: str, suffix: str) -> Path:
+    return base_dir / "replay" / "reports" / f"passive-features-{run_id}.{suffix}"
+
+
 def canonical_file_run_id(path: Path) -> str | None:
     if not path.name.startswith("part-") or path.suffix != ".ndjson":
         return None

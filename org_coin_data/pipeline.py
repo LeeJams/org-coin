@@ -17,6 +17,7 @@ from .bithumb import (
 )
 from .contracts import validate_record
 from .observability import Observability
+from .passive_features import build_passive_feature_report
 from .storage import (
     append_jsonl,
     canonical_file_run_id,
@@ -660,6 +661,9 @@ def run_bootstrap_session(
         if interval_seconds > 0 and iteration + 1 < iterations:
             time.sleep(interval_seconds)
     obs.flush_validation_counts()
+    passive_feature_json_path, passive_feature_markdown_path = build_passive_feature_report(
+        base_dir, run_id
+    )
     manifest_path = build_run_replay_manifest(base_dir, run_id)
     quality_json_path, quality_markdown_path = build_quality_report(
         base_dir, run_id, freshness_sla_ms
@@ -671,6 +675,8 @@ def run_bootstrap_session(
         "manifest_path": manifest_path,
         "quality_json_path": quality_json_path,
         "quality_markdown_path": quality_markdown_path,
+        "passive_feature_json_path": passive_feature_json_path,
+        "passive_feature_markdown_path": passive_feature_markdown_path,
     }
 
 

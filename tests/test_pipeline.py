@@ -248,6 +248,7 @@ class PipelineTest(unittest.TestCase):
 
     @patch("org_coin_data.pipeline.build_quality_report")
     @patch("org_coin_data.pipeline.build_run_replay_manifest")
+    @patch("org_coin_data.pipeline.build_passive_feature_report")
     @patch("org_coin_data.pipeline.capture_live_public_data", new_callable=AsyncMock)
     @patch("org_coin_data.pipeline.capture_rest_snapshots")
     @patch("org_coin_data.pipeline.backfill_trade_ticks")
@@ -262,6 +263,7 @@ class PipelineTest(unittest.TestCase):
         backfill_trade_mock,
         capture_rest_mock,
         capture_live_mock,
+        build_passive_mock,
         build_manifest_mock,
         build_quality_mock,
     ) -> None:
@@ -269,6 +271,10 @@ class PipelineTest(unittest.TestCase):
         build_quality_mock.return_value = (
             Path("/tmp/quality-run123.json"),
             Path("/tmp/quality-run123.md"),
+        )
+        build_passive_mock.return_value = (
+            Path("/tmp/passive-run123.json"),
+            Path("/tmp/passive-run123.md"),
         )
 
         result = run_bootstrap_session(
@@ -288,6 +294,7 @@ class PipelineTest(unittest.TestCase):
         backfill_trade_mock.assert_called_once()
         self.assertEqual(capture_rest_mock.call_count, 3)
         self.assertEqual(capture_live_mock.call_count, 3)
+        build_passive_mock.assert_called_once_with(Path("/tmp"), "run123")
         build_manifest_mock.assert_called_once_with(Path("/tmp"), "run123")
         build_quality_mock.assert_called_once_with(Path("/tmp"), "run123", 10_000)
         self.assertEqual(result["run_id"], "run123")

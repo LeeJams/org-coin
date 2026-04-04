@@ -11,13 +11,16 @@ import {
 } from "../runtime/config.js";
 import type {
   ExecutionMode,
+  PaperSessionArtifactPaths,
   OrderManager,
   OrderManagerDecision,
   OrderRecord,
   PortfolioState,
   ReconciliationReport,
+  RejectLedgerSummary,
 } from "./types.js";
 import type { CreateOrderManagerOptions } from "./order-manager.js";
+import { buildRejectLedgerSummary } from "./ledger.js";
 
 export type SessionRunnerMode = Exclude<ExecutionMode, "live">;
 
@@ -47,13 +50,18 @@ export type PaperSessionOutcome =
 
 export interface PaperSessionReport {
   schemaVersion: "1.0.0";
+  sessionId?: string;
+  scenarioPath?: string;
+  generatedAt: string;
   mode: SessionRunnerMode;
   processedEvents: number;
   outcomes: PaperSessionOutcome[];
   latestSnapshots: Record<string, PaperSessionSnapshotEvent["snapshot"]>;
   portfolio: PortfolioState;
   ledger: ReturnType<OrderManager["getLedgerSnapshot"]>;
+  rejectLedger: RejectLedgerSummary;
   reconciliation: ReconciliationReport;
+  artifacts?: PaperSessionArtifactPaths;
 }
 
 function cloneSnapshot(snapshot: PaperSessionSnapshotEvent["snapshot"]) {
@@ -99,7 +107,7 @@ export class PaperSessionRunner {
     const { market, signalId } = extractSignalMetadata(event.signal);
     const decision = await this.manager.submitSignal(event.signal, {
       marketSnapshot: market ? this.latestSnapshots.get(market) : undefined,
-      receivedAt: event.receivedAt,
+      receivedAt: event.receivedAt ?? event.signal.generatedAt,
     });
     const outcome: PaperSessionSignalOutcome = {
       type: "signal",
@@ -154,8 +162,12 @@ export class PaperSessionRunner {
   }
 
   finalize(reconcileAt?: string): PaperSessionReport {
+    const ledger = this.manager.getLedgerSnapshot();
+    const reconciliation = this.manager.reconcileSession(reconcileAt);
+
     return {
       schemaVersion: "1.0.0",
+      generatedAt: reconciliation.generatedAt,
       mode: this.mode,
       processedEvents: this.outcomes.length,
       outcomes: this.outcomes.map((outcome) => {
@@ -192,8 +204,9 @@ export class PaperSessionRunner {
         ]),
       ),
       portfolio: this.manager.getPortfolioState(),
-      ledger: this.manager.getLedgerSnapshot(),
-      reconciliation: this.manager.reconcileSession(reconcileAt),
+      ledger,
+      rejectLedger: buildRejectLedgerSummary(ledger.decisions),
+      reconciliation,
     };
   }
 }
