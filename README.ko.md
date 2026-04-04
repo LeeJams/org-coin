@@ -165,6 +165,14 @@ npm run pm2:start:dry-run
 
 이 서비스는 `bootstrap -> build-session-scenario -> dry_run paper-session` 순서로 한 사이클을 실행하고, 요약 NDJSON은 `var/log/dry-run-service/cycles.ndjson`, PM2 표준 출력/오류 로그는 `var/log/pm2/`, 일반 세션 산출물은 `var/paper-sessions/` 아래에 남깁니다.
 
+캡처된 시장 데이터는 유지한 채 로컬 생성 산출물만 정리하려면:
+
+```bash
+npm run clean:artifacts
+```
+
+`var/paper-sessions/` 아래의 생성 세션 산출물까지 비우려면 명시적으로 `npm run clean:paper-sessions`를 실행합니다.
+
 ## 런타임과 비밀값 처리
 
 현재의 페이퍼 우선 범위에서는 거래소 API 자격 증명이 필요하지 않습니다.

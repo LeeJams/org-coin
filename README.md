@@ -179,6 +179,14 @@ npm run pm2:start:dry-run
 
 The managed service runs `bootstrap -> build-session-scenario -> dry_run paper-session` in one loop, appends a structured cycle summary to `var/log/dry-run-service/cycles.ndjson`, keeps PM2 stdout/stderr in `var/log/pm2/`, and still writes the normal session artifacts under `var/paper-sessions/`.
 
+Clean generated local artifacts without touching captured market data:
+
+```bash
+npm run clean:artifacts
+```
+
+Run `npm run clean:paper-sessions` only when you explicitly want to remove generated session evidence under `var/paper-sessions/` as well.
+
 ## Runtime and secret handling
 
 This repository does not require exchange API credentials for the current paper-first scope.

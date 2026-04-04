@@ -48,6 +48,20 @@ Stop the loop:
 npm run pm2:stop:dry-run
 ```
 
+Clean generated local build and runtime logs:
+
+```bash
+npm run clean:artifacts
+```
+
+If you also want to wipe generated paper-session outputs, run:
+
+```bash
+npm run clean:paper-sessions
+```
+
+Both commands intentionally leave `var/data/` intact so replay and strategy datasets are not deleted by routine cleanup.
+
 ## Configuration
 
 The service reads `.env` plus process env. If `.env` is missing, run `npm run env:init` once or just use the PM2 start/restart commands, which now create the local file from `.env.example` automatically when needed.

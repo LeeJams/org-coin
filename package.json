@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "clean:artifacts": "node scripts/clean-generated.mjs",
+    "clean:paper-sessions": "node scripts/clean-generated.mjs --paper-sessions",
     "env:init": "node scripts/init-env.mjs",
     "prepaper:session": "npm run env:init && npm run build",
     "paper:session": "node dist/src/cli/run-paper-session.js",
