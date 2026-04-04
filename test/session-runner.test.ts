@@ -14,6 +14,12 @@ import {
   type PortfolioState,
 } from "../src/index.js";
 
+const lifecycleFixturePath = join(
+  process.cwd(),
+  "examples",
+  "paper-session.lifecycle.fixture.json",
+);
+
 function buildSnapshot(overrides: Partial<MarketSnapshot> = {}): MarketSnapshot {
   return {
     market: "KRW-BTC",
@@ -59,6 +65,12 @@ function buildRuntimeConfig(mode: "paper" | "dry_run" = "paper") {
   });
 }
 
+function loadLifecycleFixture(): PaperSessionScenario {
+  return JSON.parse(
+    readFileSync(lifecycleFixturePath, "utf8"),
+  ) as PaperSessionScenario;
+}
+
 test("validatePaperSessionScenario rejects malformed snapshot events", () => {
   const validation = validatePaperSessionScenario({
     schemaVersion: "1.0.0",
@@ -82,71 +94,58 @@ test("validatePaperSessionScenario rejects malformed snapshot events", () => {
   );
 });
 
-test("paper session runner executes a clean buy/sell scenario", async () => {
-  const portfolio: PortfolioState = {
-    cashAvailable: 5_000_000,
-    dailyRealizedPnl: 0,
-    positions: {},
-  };
-  const scenario: PaperSessionScenario = {
-    schemaVersion: "1.0.0",
-    initialPortfolio: portfolio,
-    reconcileAt: "2026-04-02T12:00:02.000Z",
-    events: [
-      {
-        type: "snapshot",
-        snapshot: buildSnapshot(),
-      },
-      {
-        type: "signal",
-        signal: buildBuySignal(),
-      },
-      {
-        type: "snapshot",
-        snapshot: buildSnapshot({
-          asOf: "2026-04-02T12:00:01.000Z",
-          bestBidPrice: 140_050_000,
-          bestAskPrice: 140_060_000,
-          lastTradePrice: 140_055_000,
-        }),
-      },
-      {
-        type: "signal",
-        signal: {
-          schemaVersion: "1.0.0",
-          signalId: "sig-sell-1",
-          strategyId: "momentum-v1",
-          market: "KRW-BTC",
-          side: "sell",
-          sizing: {
-            basis: "position_fraction",
-            value: 1,
-          },
-          confidence: 0.68,
-          generatedAt: "2026-04-02T12:00:01.000Z",
-          expiresAt: "2026-04-02T12:00:10.000Z",
-          maxSlippageBps: 6,
-          reasonCodes: ["momentum_reversal"],
-          reduceOnly: true,
-        },
-      },
-    ],
-  };
-  const runner = createPaperSessionRunner(buildRuntimeConfig(), {
-    clock: () => new Date("2026-04-02T12:00:00.000Z"),
-    portfolio,
-  });
+test("validatePaperSessionScenario accepts generator metadata envelope", () => {
+  const validation = validatePaperSessionScenario(loadLifecycleFixture());
 
-  const report = await runner.runScenario(scenario);
+  assert.equal(validation.ok, true);
+  if (!validation.ok) {
+    return;
+  }
 
-  assert.equal(report.mode, "paper");
-  assert.equal(report.generatedAt, "2026-04-02T12:00:02.000Z");
-  assert.equal(report.processedEvents, 4);
-  assert.equal(report.outcomes.filter((outcome) => outcome.type === "signal").length, 2);
-  assert.equal(report.rejectLedger.totalRejectedDecisions, 0);
-  assert.equal(report.reconciliation.ok, true);
-  assert.equal(report.reconciliation.openPositions.length, 0);
+  assert.equal(validation.value.metadata?.sourceRunId, "run-deterministic-lifecycle");
+  assert.equal(
+    validation.value.metadata?.summary?.suppressedByReason.SUPPRESS_WEAK_CONFLUENCE,
+    2,
+  );
 });
+
+for (const mode of ["dry_run", "paper"] as const) {
+  test(`${mode} session runner executes the lifecycle fixture cleanly`, async () => {
+    const validation = validatePaperSessionScenario(loadLifecycleFixture());
+    assert.equal(validation.ok, true);
+    if (!validation.ok) {
+      return;
+    }
+
+    const runner = createPaperSessionRunner(buildRuntimeConfig(mode), {
+      clock: validation.value.clockAt
+        ? () => new Date(validation.value.clockAt!)
+        : undefined,
+      portfolio: validation.value.initialPortfolio,
+    });
+
+    const report = await runner.runScenario(validation.value);
+    const signalOutcomes = report.outcomes.filter((outcome) => outcome.type === "signal");
+
+    assert.equal(report.mode, mode);
+    assert.equal(report.generatedAt, "2026-04-02T12:00:02.000Z");
+    assert.equal(report.processedEvents, 4);
+    assert.equal(signalOutcomes.length, 2);
+    assert.ok(
+      signalOutcomes.every(
+        (outcome) => outcome.type === "signal" && outcome.decision.accepted,
+      ),
+    );
+    assert.deepEqual(report.suppressionSummary, {
+      SUPPRESS_DATA_STALE: 1,
+      SUPPRESS_WEAK_CONFLUENCE: 2,
+    });
+    assert.equal(report.scenarioMetadata?.summary?.entrySignalCount, 1);
+    assert.equal(report.rejectLedger.totalRejectedDecisions, 0);
+    assert.equal(report.reconciliation.ok, true);
+    assert.equal(report.reconciliation.openPositions.length, 0);
+  });
+}
 
 test("paper session runner rejects signals when no snapshot is loaded", async () => {
   const scenario: PaperSessionScenario = {
@@ -238,77 +237,29 @@ test("persistPaperSessionReport writes the artifact bundle for audit", async () 
   const artifactDir = mkdtempSync(join(tmpdir(), "org-coin-paper-session-"));
 
   try {
-    const portfolio: PortfolioState = {
-      cashAvailable: 5_000_000,
-      dailyRealizedPnl: 0,
-      positions: {},
-    };
-    const scenario: PaperSessionScenario = {
-      schemaVersion: "1.0.0",
-      reconcileAt: "2026-04-02T12:00:02.000Z",
-      initialPortfolio: portfolio,
-      events: [
-        {
-          type: "snapshot",
-          snapshot: buildSnapshot(),
-        },
-        {
-          type: "signal",
-          signal: buildBuySignal("sig-artifact-buy"),
-          receivedAt: "2026-04-02T12:00:00.500Z",
-        },
-        {
-          type: "signal",
-          signal: buildBuySignal("sig-artifact-buy"),
-          receivedAt: "2026-04-02T12:00:01.000Z",
-        },
-        {
-          type: "snapshot",
-          snapshot: buildSnapshot({
-            asOf: "2026-04-02T12:00:01.000Z",
-            bestBidPrice: 140_050_000,
-            bestAskPrice: 140_060_000,
-            lastTradePrice: 140_055_000,
-          }),
-        },
-        {
-          type: "signal",
-          signal: {
-            schemaVersion: "1.0.0",
-            signalId: "sig-artifact-sell",
-            strategyId: "momentum-v1",
-            market: "KRW-BTC",
-            side: "sell",
-            sizing: {
-              basis: "position_fraction",
-              value: 1,
-            },
-            confidence: 0.68,
-            generatedAt: "2026-04-02T12:00:01.000Z",
-            expiresAt: "2026-04-02T12:00:10.000Z",
-            maxSlippageBps: 6,
-            reasonCodes: ["momentum_reversal"],
-            reduceOnly: true,
-          },
-          receivedAt: "2026-04-02T12:00:01.500Z",
-        },
-      ],
-    };
+    const validation = validatePaperSessionScenario(loadLifecycleFixture());
+    assert.equal(validation.ok, true);
+    if (!validation.ok) {
+      return;
+    }
+
     const runner = createPaperSessionRunner(buildRuntimeConfig(), {
-      clock: () => new Date("2026-04-02T12:00:00.000Z"),
-      portfolio,
+      clock: validation.value.clockAt
+        ? () => new Date(validation.value.clockAt!)
+        : undefined,
+      portfolio: validation.value.initialPortfolio,
     });
 
-    const report = await runner.runScenario(scenario);
+    const report = await runner.runScenario(validation.value);
     const persisted = await persistPaperSessionReport({
       report,
       baseDir: artifactDir,
       sessionId: "session-fixture",
-      scenarioPath: "/tmp/scenario.json",
+      scenarioPath: lifecycleFixturePath,
     });
 
     assert.equal(persisted.sessionId, "session-fixture");
-    assert.equal(persisted.scenarioPath, "/tmp/scenario.json");
+    assert.equal(persisted.scenarioPath, lifecycleFixturePath);
     assert.ok(existsSync(persisted.artifacts?.reportPath ?? ""));
     assert.ok(existsSync(persisted.artifacts?.reportMarkdownPath ?? ""));
     assert.ok(existsSync(persisted.artifacts?.ledgerPath ?? ""));
@@ -316,7 +267,15 @@ test("persistPaperSessionReport writes the artifact bundle for audit", async () 
 
     const storedReport = JSON.parse(
       readFileSync(persisted.artifacts!.reportPath, "utf8"),
-    ) as { sessionId: string };
+    ) as {
+      sessionId: string;
+      suppressionSummary: Record<string, number>;
+      scenarioMetadata?: {
+        summary?: {
+          suppressedByReason?: Record<string, number>;
+        };
+      };
+    };
     const storedRejectLedger = JSON.parse(
       readFileSync(persisted.artifacts!.rejectLedgerPath, "utf8"),
     ) as { totalRejectedDecisions: number };
@@ -333,11 +292,21 @@ test("persistPaperSessionReport writes the artifact bundle for audit", async () 
     );
 
     assert.equal(storedReport.sessionId, "session-fixture");
-    assert.equal(storedRejectLedger.totalRejectedDecisions, 1);
+    assert.deepEqual(storedReport.suppressionSummary, {
+      SUPPRESS_DATA_STALE: 1,
+      SUPPRESS_WEAK_CONFLUENCE: 2,
+    });
+    assert.deepEqual(
+      storedReport.scenarioMetadata?.summary?.suppressedByReason,
+      storedReport.suppressionSummary,
+    );
+    assert.equal(storedRejectLedger.totalRejectedDecisions, 0);
     assert.ok(ledgerLines.some((line) => line.type === "decision"));
     assert.ok(ledgerLines.some((line) => line.type === "order"));
     assert.ok(ledgerLines.some((line) => line.type === "fill"));
     assert.match(markdown, /session-fixture/);
+    assert.match(markdown, /SUPPRESS_DATA_STALE/);
+    assert.match(markdown, /SUPPRESS_WEAK_CONFLUENCE/);
   } finally {
     rmSync(artifactDir, { recursive: true, force: true });
   }

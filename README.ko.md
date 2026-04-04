@@ -94,7 +94,7 @@ python -m org_coin_data bootstrap \
   --interval-seconds 5
 ```
 
-`bootstrap` 명령은 같은 run 기준의 리플레이 매니페스트 경로, 사람이 읽기 쉬운 품질 요약 경로, passive feature 분포 요약 경로를 순서대로 출력합니다.
+`bootstrap` 명령은 기본적으로 60초 동안 websocket trade를 예열하고, 리플레이용 최근 체결 백필 수를 충분히 확보한 뒤 같은 run 기준의 리플레이 매니페스트 경로, 사람이 읽기 쉬운 품질 요약 경로, passive feature 분포 요약 경로, preflight gate 요약 경로를 순서대로 출력합니다.
 
 정규화 저장소에서 특정 run 기준 리플레이 매니페스트를 다시 생성합니다.
 
@@ -114,6 +114,20 @@ python -m org_coin_data build-quality-report --run-id <run-id>
 python -m org_coin_data build-passive-feature-report --run-id <run-id>
 ```
 
+기존 run 기준 eligibility/freshness preflight gate 요약을 다시 생성합니다.
+
+```bash
+python -m org_coin_data build-preflight-report --run-id <run-id>
+```
+
+캡처된 run 하나를 기준으로 시작 자금 100만원의 리플레이 세션 시나리오를 생성합니다.
+
+```bash
+python -m org_coin_data build-session-scenario \
+  --run-id <run-id> \
+  --initial-cash-krw 1000000
+```
+
 수동 갭 리페어 기록을 남깁니다.
 
 ```bash
@@ -131,12 +145,19 @@ npm test
 python -m unittest discover -s tests -v
 ```
 
+생성된 리플레이 시나리오를 낙관적 `dry_run` 모드로 실행합니다.
+
+```bash
+TRADING_MODE=dry_run npm run paper:session -- var/data/replay/scenarios/session-<run-id>.json
+```
+
 ## 런타임과 비밀값 처리
 
 현재의 페이퍼 우선 범위에서는 거래소 API 자격 증명이 필요하지 않습니다.
 
 - 향후 런타임 입력은 [`docs/runtime-contract.md`](docs/runtime-contract.md)에 정리되어 있습니다.
 - passive feature 수집 운영 가이드는 [`docs/passive-feature-collection.md`](docs/passive-feature-collection.md)에 정리되어 있습니다.
+- `dry_run`은 기준 호가로 즉시 체결되는 낙관적 검증 모드이고, `paper`는 슬리피지와 수수료를 반영한 보수적 시뮬레이터입니다.
 - 예시 환경 변수 템플릿은 [`.env.example`](.env.example)에 있습니다.
 - 저장소가 페이퍼 전용으로 유지되는 동안 로컬 `.env`의 `BITHUMB_ACCESS_KEY`, `BITHUMB_SECRET_KEY`는 비워 두어야 합니다.
 - 실제 `.env` 파일과 채워진 비밀값은 절대 커밋하면 안 됩니다.

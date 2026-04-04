@@ -43,7 +43,7 @@ function buildBuySignal(signalId = "sig-buy-1") {
   };
 }
 
-test("dry_run manager accepts a valid signal without fills", async () => {
+test("dry_run manager fills a valid signal at the reference price", async () => {
   const manager = createDryRunOrderManager({
     clock: () => new Date("2026-04-02T12:00:00.000Z"),
   });
@@ -58,8 +58,10 @@ test("dry_run manager accepts a valid signal without fills", async () => {
   }
 
   assert.equal(decision.mode, "dry_run");
-  assert.equal(decision.order.status, "accepted");
-  assert.equal(decision.fills.length, 0);
+  assert.equal(decision.order.status, "filled");
+  assert.equal(decision.fills.length, 1);
+  assert.equal(decision.fills[0]?.price, 140_010_000);
+  assert.ok(manager.getPortfolioState().positions["KRW-BTC"].baseQuantity > 0);
 });
 
 test("paper manager fills a buy then a sell and reconciles cleanly", async () => {

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 from org_coin_data.observability import Observability
 from org_coin_data.pipeline import (
+    backfill_trade_ticks,
     build_quality_report,
     build_replay_manifest,
     build_run_replay_manifest,
@@ -102,6 +103,87 @@ class PipelineTest(unittest.TestCase):
         record = normalize_ticker_event(payload, "capture3", "2026-04-02T12:44:43Z", "bithumb_rest")
         self.assertEqual(record["ask_bid"], "UNKNOWN")
         self.assertEqual(record["market_state"], "UNKNOWN")
+
+    def test_normalize_ticker_event_aligns_rest_timestamp_with_capture_clock(self) -> None:
+        payload = {
+            "market": "KRW-BTC",
+            "trade_timestamp": 1775316652976,
+            "opening_price": 103543000,
+            "high_price": 104153000,
+            "low_price": 100596000,
+            "trade_price": 100861000,
+            "prev_closing_price": 103528000,
+            "change": "FALL",
+            "change_price": 2666000,
+            "signed_change_price": -2666000,
+            "change_rate": 0.0258,
+            "signed_change_rate": -0.0258,
+            "trade_volume": 0.00246881,
+            "acc_trade_price": 59425082702.04681,
+            "acc_trade_price_24h": 68542352803.87309,
+            "acc_trade_volume": 581.44817469,
+            "acc_trade_volume_24h": 669.71106417,
+            "timestamp": 1775316652976,
+        }
+        record = normalize_ticker_event(payload, "capture3", "2026-04-04T06:30:57Z", "bithumb_rest")
+        self.assertEqual(record["event_timestamp_ms"], 1775284252976)
+        self.assertEqual(record["trade_timestamp_ms"], 1775284252976)
+        self.assertEqual(record["exchange_timestamp_raw"], "1775316652976")
+
+    @patch("org_coin_data.pipeline._write_validated_records", side_effect=lambda _base_dir, _dataset, records, _obs: records)
+    @patch("org_coin_data.pipeline.append_jsonl")
+    @patch("org_coin_data.pipeline.fetch_trade_ticks")
+    def test_backfill_trade_ticks_dedupes_repeated_refreshes_for_one_run(
+        self,
+        fetch_trade_ticks_mock,
+        _append_jsonl_mock,
+        _write_validated_records_mock,
+    ) -> None:
+        payload = [
+            {
+                "market": "KRW-BTC",
+                "trade_price": 100_000_000,
+                "trade_volume": 0.1,
+                "prev_closing_price": 99_000_000,
+                "change_price": 1_000_000,
+                "ask_bid": "BID",
+                "timestamp": 1775284252976,
+                "sequential_id": 17752842529760000,
+            },
+            {
+                "market": "KRW-BTC",
+                "trade_price": 100_100_000,
+                "trade_volume": 0.2,
+                "prev_closing_price": 99_000_000,
+                "change_price": 1_100_000,
+                "ask_bid": "ASK",
+                "timestamp": 1775284253976,
+                "sequential_id": 17752842539760000,
+            },
+        ]
+        fetch_trade_ticks_mock.return_value = payload
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            obs = Observability(Path(tmpdir), "run123", 10_000)
+            dedupe_keys_by_market: dict[str, set[str]] = {}
+
+            first = backfill_trade_ticks(
+                Path(tmpdir),
+                ["KRW-BTC"],
+                10,
+                obs,
+                dedupe_keys_by_market=dedupe_keys_by_market,
+            )
+            second = backfill_trade_ticks(
+                Path(tmpdir),
+                ["KRW-BTC"],
+                10,
+                obs,
+                dedupe_keys_by_market=dedupe_keys_by_market,
+            )
+
+        self.assertEqual(len(first), 2)
+        self.assertEqual(second, [])
 
     def test_manifest_summarizes_written_canonical_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -248,6 +330,7 @@ class PipelineTest(unittest.TestCase):
 
     @patch("org_coin_data.pipeline.build_quality_report")
     @patch("org_coin_data.pipeline.build_run_replay_manifest")
+    @patch("org_coin_data.pipeline.build_preflight_report")
     @patch("org_coin_data.pipeline.build_passive_feature_report")
     @patch("org_coin_data.pipeline.capture_live_public_data", new_callable=AsyncMock)
     @patch("org_coin_data.pipeline.capture_rest_snapshots")
@@ -264,6 +347,7 @@ class PipelineTest(unittest.TestCase):
         capture_rest_mock,
         capture_live_mock,
         build_passive_mock,
+        build_preflight_mock,
         build_manifest_mock,
         build_quality_mock,
     ) -> None:
@@ -276,6 +360,10 @@ class PipelineTest(unittest.TestCase):
             Path("/tmp/passive-run123.json"),
             Path("/tmp/passive-run123.md"),
         )
+        build_preflight_mock.return_value = (
+            Path("/tmp/preflight-run123.json"),
+            Path("/tmp/preflight-run123.md"),
+        )
 
         result = run_bootstrap_session(
             Path("/tmp"),
@@ -287,18 +375,81 @@ class PipelineTest(unittest.TestCase):
             iterations=3,
             interval_seconds=0,
             freshness_sla_ms=10_000,
+            trade_warmup_seconds=0,
         )
 
         ingest_market_catalog_mock.assert_called_once()
         backfill_candle_mock.assert_called_once()
-        backfill_trade_mock.assert_called_once()
+        self.assertEqual(backfill_trade_mock.call_count, 4)
+        first_trade_backfill = backfill_trade_mock.call_args_list[0]
+        self.assertEqual(first_trade_backfill.args[2], 1000)
         self.assertEqual(capture_rest_mock.call_count, 3)
         self.assertEqual(capture_live_mock.call_count, 3)
         build_passive_mock.assert_called_once_with(Path("/tmp"), "run123")
+        build_preflight_mock.assert_called_once_with(Path("/tmp"), "run123")
         build_manifest_mock.assert_called_once_with(Path("/tmp"), "run123")
         build_quality_mock.assert_called_once_with(Path("/tmp"), "run123", 10_000)
         self.assertEqual(result["run_id"], "run123")
         self.assertEqual(result["iterations"], 3)
+        self.assertEqual(result["preflight_markdown_path"], Path("/tmp/preflight-run123.md"))
+
+    @patch("org_coin_data.pipeline.build_quality_report")
+    @patch("org_coin_data.pipeline.build_run_replay_manifest")
+    @patch("org_coin_data.pipeline.build_preflight_report")
+    @patch("org_coin_data.pipeline.build_passive_feature_report")
+    @patch("org_coin_data.pipeline.capture_live_public_data", new_callable=AsyncMock)
+    @patch("org_coin_data.pipeline.capture_rest_snapshots")
+    @patch("org_coin_data.pipeline.backfill_trade_ticks")
+    @patch("org_coin_data.pipeline.backfill_candle_1m")
+    @patch("org_coin_data.pipeline.ingest_market_catalog")
+    @patch("org_coin_data.pipeline.new_capture_id", return_value="run123")
+    def test_run_bootstrap_session_warms_up_trade_window_before_rest_snapshots(
+        self,
+        _new_capture_id,
+        _ingest_market_catalog_mock,
+        _backfill_candle_mock,
+        _backfill_trade_mock,
+        capture_rest_mock,
+        capture_live_mock,
+        build_passive_mock,
+        build_preflight_mock,
+        build_manifest_mock,
+        build_quality_mock,
+    ) -> None:
+        build_manifest_mock.return_value = Path("/tmp/manifest-run123.json")
+        build_quality_mock.return_value = (
+            Path("/tmp/quality-run123.json"),
+            Path("/tmp/quality-run123.md"),
+        )
+        build_passive_mock.return_value = (
+            Path("/tmp/passive-run123.json"),
+            Path("/tmp/passive-run123.md"),
+        )
+        build_preflight_mock.return_value = (
+            Path("/tmp/preflight-run123.json"),
+            Path("/tmp/preflight-run123.md"),
+        )
+
+        run_bootstrap_session(
+            Path("/tmp"),
+            ["KRW-BTC"],
+            candle_count=10,
+            trade_count=20,
+            ws_seconds=15,
+            channels=["ticker", "trade"],
+            iterations=2,
+            interval_seconds=0,
+            freshness_sla_ms=10_000,
+            trade_warmup_seconds=60,
+        )
+
+        self.assertEqual(_backfill_trade_mock.call_count, 3)
+        first_trade_backfill = _backfill_trade_mock.call_args_list[0]
+        self.assertEqual(first_trade_backfill.args[2], 1000)
+        self.assertEqual(capture_live_mock.await_count, 3)
+        first_call = capture_live_mock.await_args_list[0]
+        self.assertEqual(first_call.args[3], 60)
+        self.assertEqual(capture_rest_mock.call_count, 2)
 
 
 if __name__ == "__main__":

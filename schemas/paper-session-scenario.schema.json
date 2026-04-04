@@ -20,6 +20,93 @@
       "type": "string",
       "format": "date-time"
     },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceRunId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strategyId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modeIntent": {
+          "enum": [
+            "dry_run",
+            "paper",
+            "live"
+          ]
+        },
+        "initialCashKrw": {
+          "type": "number",
+          "minimum": 0
+        },
+        "aggressiveNotionalFraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "eligibilityNote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "snapshotCount",
+            "signalCount",
+            "entrySignalCount",
+            "exitSignalCount",
+            "syntheticCloseCount",
+            "marketsTraded",
+            "suppressedByReason"
+          ],
+          "properties": {
+            "snapshotCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "signalCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "entrySignalCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "exitSignalCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "syntheticCloseCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "marketsTraded": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "suppressedByReason": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
     "initialPortfolio": {
       "type": "object",
       "additionalProperties": false,

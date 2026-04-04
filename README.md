@@ -100,7 +100,7 @@ python -m org_coin_data bootstrap \
   --interval-seconds 5
 ```
 
-`bootstrap` prints three paths: the run-scoped replay manifest, the human-readable quality summary, and the passive-feature distribution summary for that same run.
+`bootstrap` preloads websocket trades for 60 seconds, enforces a replay-focused recent trade backfill floor, and prints four paths: the run-scoped replay manifest, the human-readable quality summary, the passive-feature distribution summary, and the preflight gate summary for that same run.
 
 Build a replay manifest from the canonical store for one run:
 
@@ -118,6 +118,20 @@ Rebuild the derived passive-feature dataset and distribution report for an exist
 
 ```bash
 python -m org_coin_data build-passive-feature-report --run-id <run-id>
+```
+
+Build the preflight eligibility and freshness gate summary for an existing run:
+
+```bash
+python -m org_coin_data build-preflight-report --run-id <run-id>
+```
+
+Build a replayable session scenario from one captured run with KRW 1,000,000 starting cash:
+
+```bash
+python -m org_coin_data build-session-scenario \
+  --run-id <run-id> \
+  --initial-cash-krw 1000000
 ```
 
 Record a manual gap-repair attempt:
@@ -143,7 +157,13 @@ Run the sample signal-to-order paper session:
 npm run paper:session -- examples/paper-session.sample.json
 ```
 
-The session runner auto-loads `.env` from the repo root when present, validates the scenario against the TypeScript-side paper-session contract, honors an optional deterministic `clockAt` replay timestamp, persists JSON/Markdown/NDJSON evidence under `var/paper-sessions/`, and exits with status `2` when reconciliation fails.
+Run a captured replay scenario in optimistic `dry_run` mode:
+
+```bash
+TRADING_MODE=dry_run npm run paper:session -- var/data/replay/scenarios/session-<run-id>.json
+```
+
+The session runner auto-loads `.env` from the repo root when present, validates the scenario against the TypeScript-side paper-session contract, honors an optional deterministic `clockAt` replay timestamp, persists JSON/Markdown/NDJSON evidence under `var/paper-sessions/`, and exits with status `2` when reconciliation fails. `dry_run` now fills at the reference price with no fee or liquidity impact, while `paper` remains the slippage- and fee-aware simulator.
 
 ## Runtime and secret handling
 

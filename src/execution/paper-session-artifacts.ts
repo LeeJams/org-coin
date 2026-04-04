@@ -28,6 +28,11 @@ function buildSessionId(
 }
 
 function renderMarkdown(report: PaperSessionReport): string {
+  const suppressionEntries = Object.entries(report.suppressionSummary);
+  const totalSuppressed = suppressionEntries.reduce(
+    (sum, [, count]) => sum + count,
+    0,
+  );
   const lines = [
     "# Paper Session Report",
     "",
@@ -38,6 +43,7 @@ function renderMarkdown(report: PaperSessionReport): string {
     `- Processed Events: ${report.processedEvents}`,
     `- Reconciliation: ${report.reconciliation.ok ? "pass" : "fail"}`,
     `- Reject Decisions: ${report.rejectLedger.totalRejectedDecisions}`,
+    `- Suppressed Candidates: ${totalSuppressed}`,
     "",
     "## Reconciliation",
     "",
@@ -62,6 +68,16 @@ function renderMarkdown(report: PaperSessionReport): string {
         .map(([code, count]) => `${code}:${count}`)
         .join(", ");
       lines.push(`- \`${market}\`: ${summary.total} rejects${reasons ? ` (${reasons})` : ""}`);
+    }
+  }
+
+  lines.push("", "## Scenario Suppressions", "");
+
+  if (suppressionEntries.length === 0) {
+    lines.push("- No suppressions were recorded in scenario metadata.");
+  } else {
+    for (const [reason, count] of suppressionEntries) {
+      lines.push(`- \`${reason}\`: ${count}`);
     }
   }
 

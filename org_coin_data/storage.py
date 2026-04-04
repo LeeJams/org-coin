@@ -79,6 +79,20 @@ def replay_passive_feature_report_path(base_dir: Path, run_id: str, suffix: str)
     return base_dir / "replay" / "reports" / f"passive-features-{run_id}.{suffix}"
 
 
+def _profile_suffix(profile: str) -> str:
+    return "" if profile == "v1" else f"-{profile}"
+
+
+def replay_preflight_report_path(
+    base_dir: Path, run_id: str, suffix: str, profile: str = "v1"
+) -> Path:
+    return base_dir / "replay" / "reports" / f"preflight-{run_id}{_profile_suffix(profile)}.{suffix}"
+
+
+def replay_session_scenario_path(base_dir: Path, run_id: str, profile: str = "v1") -> Path:
+    return base_dir / "replay" / "scenarios" / f"session-{run_id}{_profile_suffix(profile)}.json"
+
+
 def canonical_file_run_id(path: Path) -> str | None:
     if not path.name.startswith("part-") or path.suffix != ".ndjson":
         return None

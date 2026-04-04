@@ -14,6 +14,8 @@ Current enforced behavior:
 - `TRADING_MODE=live` throws at startup
 - `ENABLE_LIVE_EXECUTION=true` throws at startup
 - Configured `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` are ignored while live execution stays disabled
+- `TRADING_MODE=dry_run` uses optimistic internal fills at the reference price with zero fee or liquidity impact
+- `TRADING_MODE=paper` uses the slippage- and fee-aware simulator for more conservative replay estimates
 
 ## Future live-secret contract
 

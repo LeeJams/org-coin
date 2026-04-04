@@ -16,19 +16,21 @@ export class DryRunVenue implements ExecutionVenue {
   private readonly orders = new Map<string, OrderRecord>();
 
   async submit(orderIntent: OrderIntent): Promise<ExecutionResult> {
+    const fillPrice = orderIntent.referencePrice;
+    const quoteNotional = fillPrice * orderIntent.requestedQuantity;
     const order: OrderRecord = {
       orderId: orderIntent.orderId,
       signalId: orderIntent.signalId,
       market: orderIntent.market,
       side: orderIntent.side,
       mode: orderIntent.mode,
-      status: "accepted",
+      status: "filled",
       requestedQuantity: orderIntent.requestedQuantity,
-      executedQuantity: 0,
+      executedQuantity: orderIntent.requestedQuantity,
       requestedQuoteNotional: orderIntent.requestedQuoteNotional,
-      executedQuoteNotional: 0,
+      executedQuoteNotional: quoteNotional,
       limitPrice: orderIntent.limitPrice,
-      averageFillPrice: null,
+      averageFillPrice: fillPrice,
       feesPaid: 0,
       createdAt: orderIntent.createdAt,
       updatedAt: orderIntent.createdAt,
@@ -40,8 +42,22 @@ export class DryRunVenue implements ExecutionVenue {
 
     return {
       order,
-      fills: [],
-      warnings: ["dry_run accepted without venue execution"],
+      fills: [
+        {
+          fillId: randomUUID(),
+          orderId: order.orderId,
+          signalId: order.signalId,
+          market: order.market,
+          side: order.side,
+          quantity: orderIntent.requestedQuantity,
+          price: fillPrice,
+          quoteNotional,
+          feesPaid: 0,
+          occurredAt: orderIntent.createdAt,
+          simulated: true,
+        },
+      ],
+      warnings: ["dry_run filled at reference price without fee or liquidity impact"],
     };
   }
 

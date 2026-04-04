@@ -15,9 +15,11 @@ from .bithumb import (
     fetch_ticker,
     fetch_trade_ticks,
 )
+from .config import MIN_BOOTSTRAP_TRADE_COUNT
 from .contracts import validate_record
 from .observability import Observability
 from .passive_features import build_passive_feature_report
+from .preflight import build_preflight_report
 from .storage import (
     append_jsonl,
     canonical_file_run_id,
@@ -52,6 +54,8 @@ TIMESTAMP_FIELDS = {
     "orderbook_level": "event_timestamp_ms",
 }
 FRESHNESS_TRACKED_DATASETS = {"trade_tick", "ticker_event", "orderbook_snapshot"}
+REST_TICKER_EXPECTED_OFFSET_MS = 9 * 60 * 60 * 1000
+REST_TICKER_ALIGNMENT_SKEW_MS = 4 * 60 * 60 * 1000
 
 
 def _raw_rest_envelope(dataset: str, path: str, request: dict, payload: list[dict]) -> tuple[str, str, dict]:
@@ -88,6 +92,20 @@ def _write_validated_records(
     for path, chunk in grouped.items():
         append_jsonl(path, chunk)
     return accepted
+
+
+def _timestamp_ms_from_iso(value: str) -> int:
+    return int(parse_iso8601(value).timestamp() * 1000)
+
+
+def _align_rest_ticker_timestamp_ms(timestamp_ms: int, ingested_at: str) -> int:
+    ingested_at_ms = _timestamp_ms_from_iso(ingested_at)
+    raw_gap_ms = abs(timestamp_ms - ingested_at_ms)
+    corrected_timestamp_ms = timestamp_ms - REST_TICKER_EXPECTED_OFFSET_MS
+    corrected_gap_ms = abs(corrected_timestamp_ms - ingested_at_ms)
+    if raw_gap_ms >= REST_TICKER_ALIGNMENT_SKEW_MS and corrected_gap_ms < raw_gap_ms:
+        return corrected_timestamp_ms
+    return timestamp_ms
 
 
 def normalize_market_catalog(
@@ -177,6 +195,9 @@ def normalize_ticker_event(payload: dict, capture_id: str, ingested_at: str, sou
     market = payload.get("market") or payload.get("code")
     event_timestamp_ms = normalize_timestamp_ms(payload["timestamp"])
     trade_timestamp_ms = normalize_timestamp_ms(payload["trade_timestamp"])
+    if source == "bithumb_rest":
+        event_timestamp_ms = _align_rest_ticker_timestamp_ms(event_timestamp_ms, ingested_at)
+        trade_timestamp_ms = _align_rest_ticker_timestamp_ms(trade_timestamp_ms, ingested_at)
     return {
         "dataset": "ticker_event",
         "schema_version": SCHEMA_VERSION,
@@ -282,7 +303,29 @@ def backfill_candle_1m(base_dir: Path, markets: list[str], count: int, obs: Obse
     return accepted
 
 
-def backfill_trade_ticks(base_dir: Path, markets: list[str], count: int, obs: Observability) -> list[dict]:
+def _trade_tick_dedupe_key(record: dict) -> str:
+    sequential_id = record.get("sequential_id")
+    if isinstance(sequential_id, str) and sequential_id:
+        return sequential_id
+    return ":".join(
+        [
+            str(record.get("market", "")),
+            str(record.get("trade_timestamp_ms", "")),
+            str(record.get("price", "")),
+            str(record.get("volume", "")),
+            str(record.get("side", "")),
+        ]
+    )
+
+
+def backfill_trade_ticks(
+    base_dir: Path,
+    markets: list[str],
+    count: int,
+    obs: Observability,
+    *,
+    dedupe_keys_by_market: dict[str, set[str]] | None = None,
+) -> list[dict]:
     accepted: list[dict] = []
     for market in markets:
         payload = fetch_trade_ticks(market, count)
@@ -293,6 +336,16 @@ def backfill_trade_ticks(base_dir: Path, markets: list[str], count: int, obs: Ob
         records = [
             normalize_trade_tick(item, capture_id, captured_at, "bithumb_rest") for item in payload
         ]
+        if dedupe_keys_by_market is not None:
+            seen_keys = dedupe_keys_by_market.setdefault(market, set())
+            deduped_records = []
+            for record in records:
+                record_key = _trade_tick_dedupe_key(record)
+                if record_key in seen_keys:
+                    continue
+                seen_keys.add(record_key)
+                deduped_records.append(record)
+            records = deduped_records
         persisted = _write_validated_records(base_dir, "trade_tick", records, obs)
         accepted.extend(persisted)
     return accepted
@@ -649,21 +702,40 @@ def run_bootstrap_session(
     iterations: int,
     interval_seconds: int,
     freshness_sla_ms: int,
+    trade_warmup_seconds: int = 0,
 ) -> dict:
     run_id = new_capture_id()
     obs = Observability(base_dir, run_id, freshness_sla_ms)
+    trade_dedupe_keys: dict[str, set[str]] = defaultdict(set)
+    effective_trade_count = max(trade_count, MIN_BOOTSTRAP_TRADE_COUNT)
     ingest_market_catalog(base_dir, markets, obs)
     backfill_candle_1m(base_dir, markets, candle_count, obs)
-    backfill_trade_ticks(base_dir, markets, trade_count, obs)
+    backfill_trade_ticks(
+        base_dir,
+        markets,
+        effective_trade_count,
+        obs,
+        dedupe_keys_by_market=trade_dedupe_keys,
+    )
+    if trade_warmup_seconds > 0:
+        asyncio.run(capture_live_public_data(base_dir, markets, channels, trade_warmup_seconds, obs))
     for iteration in range(iterations):
-        capture_rest_snapshots(base_dir, markets, obs)
         asyncio.run(capture_live_public_data(base_dir, markets, channels, ws_seconds, obs))
+        backfill_trade_ticks(
+            base_dir,
+            markets,
+            effective_trade_count,
+            obs,
+            dedupe_keys_by_market=trade_dedupe_keys,
+        )
+        capture_rest_snapshots(base_dir, markets, obs)
         if interval_seconds > 0 and iteration + 1 < iterations:
             time.sleep(interval_seconds)
     obs.flush_validation_counts()
     passive_feature_json_path, passive_feature_markdown_path = build_passive_feature_report(
         base_dir, run_id
     )
+    preflight_json_path, preflight_markdown_path = build_preflight_report(base_dir, run_id)
     manifest_path = build_run_replay_manifest(base_dir, run_id)
     quality_json_path, quality_markdown_path = build_quality_report(
         base_dir, run_id, freshness_sla_ms
@@ -677,6 +749,8 @@ def run_bootstrap_session(
         "quality_markdown_path": quality_markdown_path,
         "passive_feature_json_path": passive_feature_json_path,
         "passive_feature_markdown_path": passive_feature_markdown_path,
+        "preflight_json_path": preflight_json_path,
+        "preflight_markdown_path": preflight_markdown_path,
     }
 
 

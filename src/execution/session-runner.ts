@@ -2,6 +2,7 @@ import type {
   PaperSessionCancelEvent,
   PaperSessionEvent,
   PaperSessionScenario,
+  PaperSessionScenarioMetadata,
   PaperSessionSignalEvent,
   PaperSessionSnapshotEvent,
 } from "../contracts/paper-session.js";
@@ -57,6 +58,8 @@ export interface PaperSessionReport {
   processedEvents: number;
   outcomes: PaperSessionOutcome[];
   latestSnapshots: Record<string, PaperSessionSnapshotEvent["snapshot"]>;
+  scenarioMetadata?: PaperSessionScenarioMetadata;
+  suppressionSummary: Record<string, number>;
   portfolio: PortfolioState;
   ledger: ReturnType<OrderManager["getLedgerSnapshot"]>;
   rejectLedger: RejectLedgerSummary;
@@ -80,6 +83,31 @@ function extractSignalMetadata(
     market: typeof record.market === "string" ? record.market : undefined,
     signalId: typeof record.signalId === "string" ? record.signalId : undefined,
   };
+}
+
+function cloneScenarioMetadata(
+  metadata: PaperSessionScenarioMetadata | undefined,
+): PaperSessionScenarioMetadata | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    ...metadata,
+    summary: metadata.summary
+      ? {
+          ...metadata.summary,
+          marketsTraded: [...metadata.summary.marketsTraded],
+          suppressedByReason: { ...metadata.summary.suppressedByReason },
+        }
+      : undefined,
+  };
+}
+
+function extractSuppressionSummary(
+  metadata: PaperSessionScenarioMetadata | undefined,
+): Record<string, number> {
+  return metadata?.summary ? { ...metadata.summary.suppressedByReason } : {};
 }
 
 export class PaperSessionRunner {
@@ -139,6 +167,7 @@ export class PaperSessionRunner {
   async run(
     events: Iterable<PaperSessionEvent>,
     reconcileAt?: string,
+    scenarioMetadata?: PaperSessionScenarioMetadata,
   ): Promise<PaperSessionReport> {
     for (const event of events) {
       switch (event.type) {
@@ -154,14 +183,17 @@ export class PaperSessionRunner {
       }
     }
 
-    return this.finalize(reconcileAt);
+    return this.finalize(reconcileAt, scenarioMetadata);
   }
 
   async runScenario(scenario: PaperSessionScenario): Promise<PaperSessionReport> {
-    return this.run(scenario.events, scenario.reconcileAt);
+    return this.run(scenario.events, scenario.reconcileAt, scenario.metadata);
   }
 
-  finalize(reconcileAt?: string): PaperSessionReport {
+  finalize(
+    reconcileAt?: string,
+    scenarioMetadata?: PaperSessionScenarioMetadata,
+  ): PaperSessionReport {
     const ledger = this.manager.getLedgerSnapshot();
     const reconciliation = this.manager.reconcileSession(reconcileAt);
 
@@ -203,6 +235,8 @@ export class PaperSessionRunner {
           cloneSnapshot(snapshot),
         ]),
       ),
+      scenarioMetadata: cloneScenarioMetadata(scenarioMetadata),
+      suppressionSummary: extractSuppressionSummary(scenarioMetadata),
       portfolio: this.manager.getPortfolioState(),
       ledger,
       rejectLedger: buildRejectLedgerSummary(ledger.decisions),
