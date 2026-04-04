@@ -49,6 +49,9 @@ var/data/
     <dataset>/date=YYYY-MM-DD/market=<market>/part-<run-id>.ndjson
   replay/
     manifests/manifest-<run-id>.json
+    reports/
+      quality-<run-id>.json
+      quality-<run-id>.md
   observability/
     freshness_alert.ndjson
     gap_repair.ndjson
@@ -79,10 +82,27 @@ npm install
 python -m org_coin_data bootstrap --ws-seconds 15
 ```
 
-정규화 저장소에서 리플레이 매니페스트를 생성합니다.
+하나의 run id로 더 긴 반복 캡처를 수행합니다.
 
 ```bash
-python -m org_coin_data build-manifest
+python -m org_coin_data bootstrap \
+  --ws-seconds 20 \
+  --iterations 6 \
+  --interval-seconds 5
+```
+
+`bootstrap` 명령은 같은 run 기준의 리플레이 매니페스트 경로와 사람이 읽기 쉬운 품질 요약 경로를 순서대로 출력합니다.
+
+정규화 저장소에서 특정 run 기준 리플레이 매니페스트를 다시 생성합니다.
+
+```bash
+python -m org_coin_data build-manifest --run-id <run-id>
+```
+
+기존 run 기준 품질 요약을 다시 생성합니다.
+
+```bash
+python -m org_coin_data build-quality-report --run-id <run-id>
 ```
 
 수동 갭 리페어 기록을 남깁니다.

@@ -28,6 +28,7 @@ Live trading remains out of scope until a separate rollout explicitly enables it
 ```text
 contracts/      JSON schemas for the Python data plane
 docs/           runtime and operating constraints
+examples/       runnable paper-session scenarios
 org_coin_data/  Python ingestion pipeline and CLI
 plans/          shared planning documents
 schemas/        TypeScript-side schemas
@@ -47,6 +48,9 @@ var/data/
     <dataset>/date=YYYY-MM-DD/market=<market>/part-<run-id>.ndjson
   replay/
     manifests/manifest-<run-id>.json
+    reports/
+      quality-<run-id>.json
+      quality-<run-id>.md
   observability/
     freshness_alert.ndjson
     gap_repair.ndjson
@@ -77,10 +81,27 @@ Bootstrap a paper-trading dataset for the default paper universe:
 python -m org_coin_data bootstrap --ws-seconds 15
 ```
 
-Build a replay manifest from the canonical store:
+Run a longer reproducible capture session under one run id:
 
 ```bash
-python -m org_coin_data build-manifest
+python -m org_coin_data bootstrap \
+  --ws-seconds 20 \
+  --iterations 6 \
+  --interval-seconds 5
+```
+
+`bootstrap` prints two paths: the run-scoped replay manifest and the human-readable quality summary for that same run.
+
+Build a replay manifest from the canonical store for one run:
+
+```bash
+python -m org_coin_data build-manifest --run-id <run-id>
+```
+
+Build a quality report again for an existing run:
+
+```bash
+python -m org_coin_data build-quality-report --run-id <run-id>
 ```
 
 Record a manual gap-repair attempt:
@@ -100,10 +121,20 @@ npm test
 python -m unittest discover -s tests -v
 ```
 
+Run the sample signal-to-order paper session:
+
+```bash
+npm run paper:session -- examples/paper-session.sample.json
+```
+
+The session runner auto-loads `.env` from the repo root when present, validates the scenario against the TypeScript-side paper-session contract, honors an optional deterministic `clockAt` replay timestamp, and exits with status `2` when reconciliation fails.
+
 ## Runtime and secret handling
 
 This repository does not require exchange API credentials for the current paper-first scope.
 
 - Future runtime inputs are documented in [`docs/runtime-contract.md`](docs/runtime-contract.md)
+- Runtime loading lives in [`src/runtime/config.ts`](src/runtime/config.ts)
+- Session input shape is documented in [`schemas/paper-session-scenario.schema.json`](schemas/paper-session-scenario.schema.json)
 - A checked-in placeholder template lives in [`.env.example`](.env.example)
 - Real `.env` files and any populated secret values must never be committed

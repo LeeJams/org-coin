@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0.0",
+  "clockAt": "2026-04-02T12:00:00.000Z",
+  "initialPortfolio": {
+    "cashAvailable": 5000000,
+    "dailyRealizedPnl": 0,
+    "positions": {}
+  },
+  "reconcileAt": "2026-04-02T12:00:02.000Z",
+  "events": [
+    {
+      "type": "snapshot",
+      "snapshot": {
+        "market": "KRW-BTC",
+        "asOf": "2026-04-02T12:00:00.000Z",
+        "lastTradePrice": 140000000,
+        "bestBidPrice": 139990000,
+        "bestAskPrice": 140010000,
+        "bestBidSize": 0.4,
+        "bestAskSize": 0.4,
+        "spreadBps": 1.4,
+        "depthRatio": 1.25,
+        "rolling24hNotional": 450000000000
+      }
+    },
+    {
+      "type": "signal",
+      "signal": {
+        "schemaVersion": "1.0.0",
+        "signalId": "sig-buy-1",
+        "strategyId": "momentum-v1",
+        "market": "KRW-BTC",
+        "side": "buy",
+        "sizing": {
+          "basis": "quote_notional",
+          "value": 500000
+        },
+        "confidence": 0.72,
+        "generatedAt": "2026-04-02T11:59:58.000Z",
+        "expiresAt": "2026-04-02T12:00:10.000Z",
+        "maxSlippageBps": 6,
+        "reasonCodes": [
+          "momentum_positive",
+          "depth_support"
+        ]
+      }
+    },
+    {
+      "type": "snapshot",
+      "snapshot": {
+        "market": "KRW-BTC",
+        "asOf": "2026-04-02T12:00:01.000Z",
+        "lastTradePrice": 140055000,
+        "bestBidPrice": 140050000,
+        "bestAskPrice": 140060000,
+        "bestBidSize": 0.4,
+        "bestAskSize": 0.4,
+        "spreadBps": 1.4,
+        "depthRatio": 1.25,
+        "rolling24hNotional": 450000000000
+      }
+    },
+    {
+      "type": "signal",
+      "signal": {
+        "schemaVersion": "1.0.0",
+        "signalId": "sig-sell-1",
+        "strategyId": "momentum-v1",
+        "market": "KRW-BTC",
+        "side": "sell",
+        "sizing": {
+          "basis": "position_fraction",
+          "value": 1
+        },
+        "confidence": 0.68,
+        "generatedAt": "2026-04-02T12:00:01.000Z",
+        "expiresAt": "2026-04-02T12:00:10.000Z",
+        "maxSlippageBps": 6,
+        "reasonCodes": [
+          "momentum_reversal"
+        ],
+        "reduceOnly": true
+      }
+    }
+  ]
+}

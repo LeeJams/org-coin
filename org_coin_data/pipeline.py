@@ -19,13 +19,18 @@ from .contracts import validate_record
 from .observability import Observability
 from .storage import (
     append_jsonl,
+    canonical_file_run_id,
     canonical_path,
     list_canonical_files,
+    partition_value_from_path,
     raw_rest_path,
     raw_ws_path,
+    read_jsonl,
     replay_manifest_path,
+    replay_quality_report_path,
     summarize_jsonl,
     write_json,
+    write_text,
 )
 from .utils import (
     date_and_time_from_timestamp_ms,
@@ -45,6 +50,7 @@ TIMESTAMP_FIELDS = {
     "orderbook_snapshot": "event_timestamp_ms",
     "orderbook_level": "event_timestamp_ms",
 }
+FRESHNESS_TRACKED_DATASETS = {"trade_tick", "ticker_event", "orderbook_snapshot"}
 
 
 def _raw_rest_envelope(dataset: str, path: str, request: dict, payload: list[dict]) -> tuple[str, str, dict]:
@@ -381,21 +387,40 @@ async def capture_live_public_data(
 
 
 def build_replay_manifest(base_dir: Path, run_id: str, datasets: list[str] | None = None) -> Path:
-    grouped = list_canonical_files(base_dir, datasets)
+    return _build_replay_manifest(base_dir, run_id, datasets=datasets, source_run_id=None)
+
+
+def _build_replay_manifest(
+    base_dir: Path,
+    run_id: str,
+    datasets: list[str] | None = None,
+    source_run_id: str | None = None,
+) -> Path:
+    grouped = list_canonical_files(base_dir, datasets, source_run_id=source_run_id)
     manifest = {
         "manifest_id": run_id,
         "created_at": utcnow_iso(),
         "schema_version": SCHEMA_VERSION,
+        "scope": "run" if source_run_id else "all_runs",
+        "source_run_id": source_run_id,
+        "dataset_totals": {},
         "datasets": {},
     }
+    total_record_count = 0
     for dataset, files in sorted(grouped.items()):
         timestamp_field = TIMESTAMP_FIELDS.get(dataset)
         entries = []
+        dataset_record_count = 0
         for path in sorted(files):
             summary = summarize_jsonl(path, timestamp_field)
+            dataset_record_count += summary.get("record_count") or 0
+            total_record_count += summary.get("record_count") or 0
             entries.append(
                 {
                     "path": str(path),
+                    "date": partition_value_from_path(path, "date"),
+                    "market": partition_value_from_path(path, "market"),
+                    "source_run_id": canonical_file_run_id(path),
                     "record_count": summary.get("record_count"),
                     "min_timestamp": summary.get("min_timestamp"),
                     "max_timestamp": summary.get("max_timestamp"),
@@ -403,9 +428,250 @@ def build_replay_manifest(base_dir: Path, run_id: str, datasets: list[str] | Non
                 }
             )
         manifest["datasets"][dataset] = entries
+        manifest["dataset_totals"][dataset] = {
+            "file_count": len(entries),
+            "record_count": dataset_record_count,
+        }
+    manifest["total_record_count"] = total_record_count
     path = replay_manifest_path(base_dir, run_id)
     write_json(path, manifest)
     return path
+
+
+def build_run_replay_manifest(
+    base_dir: Path,
+    run_id: str,
+    datasets: list[str] | None = None,
+) -> Path:
+    return _build_replay_manifest(base_dir, run_id, datasets=datasets, source_run_id=run_id)
+
+
+def _quality_market_summary(market: str) -> dict:
+    return {
+        "market": market,
+        "record_count": 0,
+        "freshness_alert_count": 0,
+        "max_gap_ms": None,
+        "datasets": {},
+    }
+
+
+def _quality_dataset_summary(dataset: str) -> dict:
+    return {
+        "dataset": dataset,
+        "file_count": 0,
+        "record_count": 0,
+        "min_timestamp": None,
+        "max_timestamp": None,
+        "freshness_alert_count": 0,
+        "max_gap_ms": None,
+        "freshness_sla_ms": None,
+        "latest_event_age_ms": None,
+    }
+
+
+def _quality_paths(base_dir: Path, run_id: str) -> tuple[Path, Path]:
+    return (
+        replay_quality_report_path(base_dir, run_id, "json"),
+        replay_quality_report_path(base_dir, run_id, "md"),
+    )
+
+
+def _render_quality_report_markdown(report: dict) -> str:
+    lines = [
+        "# Quality Summary",
+        "",
+        f"- Source run: `{report['source_run_id']}`",
+        f"- Created at: `{report['created_at']}`",
+        f"- Total records: {report['total_record_count']}",
+        f"- Markets summarized: {report['market_count']}",
+        f"- Freshness SLA: {report['freshness_sla_ms']} ms",
+        "",
+        "| Market | Dataset | Records | Alerts | Max gap ms | Latest event age ms | Timestamp range |",
+        "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+    ]
+    for market_summary in report["markets"]:
+        for dataset_summary in market_summary["datasets"]:
+            max_gap_ms = dataset_summary["max_gap_ms"]
+            latest_event_age_ms = dataset_summary["latest_event_age_ms"]
+            time_range = "-"
+            if (
+                dataset_summary["min_timestamp"] is not None
+                and dataset_summary["max_timestamp"] is not None
+            ):
+                time_range = (
+                    f"{dataset_summary['min_timestamp']}..{dataset_summary['max_timestamp']}"
+                )
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        market_summary["market"],
+                        dataset_summary["dataset"],
+                        str(dataset_summary["record_count"]),
+                        str(dataset_summary["freshness_alert_count"]),
+                        "-" if max_gap_ms is None else str(max_gap_ms),
+                        "-" if latest_event_age_ms is None else str(latest_event_age_ms),
+                        time_range,
+                    ]
+                )
+                + " |"
+            )
+    if report["validation"]:
+        lines.extend(
+            [
+                "",
+                "## Validation",
+                "",
+                "| Dataset | Validated | Accepted | Rejected |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for row in report["validation"]:
+            lines.append(
+                f"| {row['dataset']} | {row['validated']} | {row['accepted']} | {row['rejected']} |"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def build_quality_report(base_dir: Path, run_id: str, freshness_sla_ms: int) -> tuple[Path, Path]:
+    grouped = list_canonical_files(base_dir, source_run_id=run_id)
+    report_created_at = utcnow_iso()
+    report_created_at_ms = int(parse_iso8601(report_created_at).timestamp() * 1000)
+    market_map: dict[str, dict] = {}
+    total_record_count = 0
+
+    def ensure_market_dataset(market: str, dataset: str) -> tuple[dict, dict]:
+        market_summary = market_map.setdefault(market, _quality_market_summary(market))
+        dataset_summary = market_summary["datasets"].setdefault(
+            dataset, _quality_dataset_summary(dataset)
+        )
+        return market_summary, dataset_summary
+
+    for dataset, files in sorted(grouped.items()):
+        timestamp_field = TIMESTAMP_FIELDS.get(dataset)
+        for path in sorted(files):
+            market = partition_value_from_path(path, "market") or "ALL"
+            market_summary, dataset_summary = ensure_market_dataset(market, dataset)
+            dataset_summary["file_count"] += 1
+            for record in read_jsonl(path):
+                dataset_summary["record_count"] += 1
+                market_summary["record_count"] += 1
+                total_record_count += 1
+                if not timestamp_field:
+                    continue
+                timestamp = record.get(timestamp_field)
+                if not isinstance(timestamp, int):
+                    continue
+                if dataset_summary["min_timestamp"] is None or timestamp < dataset_summary["min_timestamp"]:
+                    dataset_summary["min_timestamp"] = timestamp
+                if dataset_summary["max_timestamp"] is None or timestamp > dataset_summary["max_timestamp"]:
+                    dataset_summary["max_timestamp"] = timestamp
+
+    freshness_path = base_dir / "observability" / "freshness_alert.ndjson"
+    if freshness_path.exists():
+        for record in read_jsonl(freshness_path):
+            if record.get("run_id") != run_id:
+                continue
+            market = record["market"]
+            dataset = record["dataset"]
+            market_summary, dataset_summary = ensure_market_dataset(market, dataset)
+            dataset_summary["freshness_alert_count"] += 1
+            dataset_summary["freshness_sla_ms"] = record.get("freshness_sla_ms")
+            gap_ms = record.get("gap_ms")
+            if isinstance(gap_ms, int):
+                current_gap = dataset_summary["max_gap_ms"]
+                dataset_summary["max_gap_ms"] = gap_ms if current_gap is None else max(current_gap, gap_ms)
+                market_gap = market_summary["max_gap_ms"]
+                market_summary["max_gap_ms"] = gap_ms if market_gap is None else max(market_gap, gap_ms)
+            market_summary["freshness_alert_count"] += 1
+
+    validation = []
+    validation_path = base_dir / "observability" / "schema_validation_counter.ndjson"
+    if validation_path.exists():
+        for row in read_jsonl(validation_path):
+            if row.get("run_id") != run_id:
+                continue
+            validation.append(
+                {
+                    "dataset": row["dataset"],
+                    "validated": row["validated"],
+                    "accepted": row["accepted"],
+                    "rejected": row["rejected"],
+                }
+            )
+    validation.sort(key=lambda row: row["dataset"])
+
+    markets = []
+    for market in sorted(market_map):
+        market_summary = market_map[market]
+        dataset_rows = []
+        for dataset in sorted(market_summary["datasets"]):
+            dataset_summary = market_summary["datasets"][dataset]
+            if dataset in FRESHNESS_TRACKED_DATASETS and dataset_summary["max_timestamp"] is not None:
+                dataset_summary["latest_event_age_ms"] = max(
+                    0, report_created_at_ms - dataset_summary["max_timestamp"]
+                )
+            dataset_rows.append(dataset_summary)
+        market_summary["datasets"] = dataset_rows
+        markets.append(market_summary)
+
+    json_path, markdown_path = _quality_paths(base_dir, run_id)
+    report = {
+        "report_id": run_id,
+        "created_at": report_created_at,
+        "schema_version": SCHEMA_VERSION,
+        "source_run_id": run_id,
+        "freshness_sla_ms": freshness_sla_ms,
+        "market_count": len(markets),
+        "total_record_count": total_record_count,
+        "artifacts": {
+            "json_path": str(json_path),
+            "markdown_path": str(markdown_path),
+        },
+        "markets": markets,
+        "validation": validation,
+    }
+    write_json(json_path, report)
+    write_text(markdown_path, _render_quality_report_markdown(report))
+    return json_path, markdown_path
+
+
+def run_bootstrap_session(
+    base_dir: Path,
+    markets: list[str],
+    candle_count: int,
+    trade_count: int,
+    ws_seconds: int,
+    channels: list[str],
+    iterations: int,
+    interval_seconds: int,
+    freshness_sla_ms: int,
+) -> dict:
+    run_id = new_capture_id()
+    obs = Observability(base_dir, run_id, freshness_sla_ms)
+    ingest_market_catalog(base_dir, markets, obs)
+    backfill_candle_1m(base_dir, markets, candle_count, obs)
+    backfill_trade_ticks(base_dir, markets, trade_count, obs)
+    for iteration in range(iterations):
+        capture_rest_snapshots(base_dir, markets, obs)
+        asyncio.run(capture_live_public_data(base_dir, markets, channels, ws_seconds, obs))
+        if interval_seconds > 0 and iteration + 1 < iterations:
+            time.sleep(interval_seconds)
+    obs.flush_validation_counts()
+    manifest_path = build_run_replay_manifest(base_dir, run_id)
+    quality_json_path, quality_markdown_path = build_quality_report(
+        base_dir, run_id, freshness_sla_ms
+    )
+    return {
+        "run_id": run_id,
+        "iterations": iterations,
+        "interval_seconds": interval_seconds,
+        "manifest_path": manifest_path,
+        "quality_json_path": quality_json_path,
+        "quality_markdown_path": quality_markdown_path,
+    }
 
 
 def repair_gap(

@@ -39,7 +39,7 @@ export interface PortfolioState {
 }
 
 export interface SubmitSignalContext {
-  marketSnapshot: MarketSnapshot;
+  marketSnapshot?: MarketSnapshot;
   receivedAt?: string;
 }
 

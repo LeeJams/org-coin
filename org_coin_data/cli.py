@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 from pathlib import Path
 
 from .config import (
@@ -14,13 +13,11 @@ from .config import (
 )
 from .observability import Observability
 from .pipeline import (
-    backfill_candle_1m,
-    backfill_trade_ticks,
+    build_quality_report,
     build_replay_manifest,
-    capture_live_public_data,
-    capture_rest_snapshots,
-    ingest_market_catalog,
+    build_run_replay_manifest,
     repair_gap,
+    run_bootstrap_session,
 )
 from .utils import new_capture_id
 
@@ -39,12 +36,20 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap.add_argument("--candle-count", type=int, default=DEFAULT_CANDLE_COUNT)
     bootstrap.add_argument("--trade-count", type=int, default=DEFAULT_TRADE_COUNT)
     bootstrap.add_argument("--ws-seconds", type=int, default=DEFAULT_WS_SECONDS)
+    bootstrap.add_argument("--iterations", type=int, default=1)
+    bootstrap.add_argument("--interval-seconds", type=int, default=0)
     bootstrap.add_argument(
         "--ws-channels", default="ticker,trade,orderbook", help="comma-separated websocket channels"
     )
 
     manifest = subparsers.add_parser("build-manifest", help="build a replay manifest")
     manifest.add_argument("--base-dir", type=Path, default=DEFAULT_DATA_DIR)
+    manifest.add_argument("--run-id")
+
+    quality = subparsers.add_parser("build-quality-report", help="build a run quality report")
+    quality.add_argument("--base-dir", type=Path, default=DEFAULT_DATA_DIR)
+    quality.add_argument("--run-id", required=True)
+    quality.add_argument("--freshness-sla-ms", type=int, default=DEFAULT_FRESHNESS_SLA_MS)
 
     repair = subparsers.add_parser("repair-gap", help="record a gap-repair attempt")
     add_common(repair)
@@ -62,9 +67,34 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "build-manifest":
-        run_id = new_capture_id()
-        path = build_replay_manifest(args.base_dir, run_id)
+        manifest_id = new_capture_id()
+        if args.run_id:
+            path = build_run_replay_manifest(args.base_dir, args.run_id)
+        else:
+            path = build_replay_manifest(args.base_dir, manifest_id)
         print(path)
+        return 0
+
+    if args.command == "build-quality-report":
+        _, markdown_path = build_quality_report(args.base_dir, args.run_id, args.freshness_sla_ms)
+        print(markdown_path)
+        return 0
+
+    if args.command == "bootstrap":
+        channels = [item.strip() for item in args.ws_channels.split(",") if item.strip()]
+        result = run_bootstrap_session(
+            args.base_dir,
+            parse_markets(args.markets),
+            args.candle_count,
+            args.trade_count,
+            args.ws_seconds,
+            channels,
+            args.iterations,
+            args.interval_seconds,
+            args.freshness_sla_ms,
+        )
+        print(result["manifest_path"])
+        print(result["quality_markdown_path"])
         return 0
 
     run_id = new_capture_id()
@@ -84,15 +114,4 @@ def main(argv: list[str] | None = None) -> int:
         obs.flush_validation_counts()
         print(result["status"])
         return 0
-
-    ingest_market_catalog(args.base_dir, markets, obs)
-    backfill_candle_1m(args.base_dir, markets, args.candle_count, obs)
-    backfill_trade_ticks(args.base_dir, markets, args.trade_count, obs)
-    capture_rest_snapshots(args.base_dir, markets, obs)
-    channels = [item.strip() for item in args.ws_channels.split(",") if item.strip()]
-    asyncio.run(capture_live_public_data(args.base_dir, markets, channels, args.ws_seconds, obs))
-    obs.flush_validation_counts()
-    manifest_path = build_replay_manifest(args.base_dir, run_id)
-    print(manifest_path)
     return 0
-

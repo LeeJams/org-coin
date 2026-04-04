@@ -1,5 +1,6 @@
 export type RejectReasonCode =
   | "malformed_signal"
+  | "missing_market_snapshot"
   | "expired_signal"
   | "duplicate_signal"
   | "unsupported_market"

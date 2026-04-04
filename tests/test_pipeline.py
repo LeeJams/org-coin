@@ -2,13 +2,17 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from org_coin_data.observability import Observability
 from org_coin_data.pipeline import (
+    build_quality_report,
     build_replay_manifest,
+    build_run_replay_manifest,
     normalize_orderbook,
     normalize_ticker_event,
     normalize_trade_tick,
+    run_bootstrap_session,
 )
 from org_coin_data.storage import append_jsonl, canonical_path
 
@@ -140,6 +144,154 @@ class PipelineTest(unittest.TestCase):
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertIn("trade_tick", manifest["datasets"])
             self.assertEqual(manifest["datasets"]["trade_tick"][0]["record_count"], 1)
+
+    def test_run_manifest_filters_to_requested_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_dir = Path(tmpdir)
+            first_path = canonical_path(
+                base_dir,
+                "trade_tick",
+                "2026-04-02T12:45:05Z",
+                "run123",
+                market="KRW-BTC",
+            )
+            second_path = canonical_path(
+                base_dir,
+                "trade_tick",
+                "2026-04-02T12:46:05Z",
+                "run999",
+                market="KRW-ETH",
+            )
+            append_jsonl(first_path, [{"dataset": "trade_tick", "event_timestamp_ms": 1775133905256}])
+            append_jsonl(second_path, [{"dataset": "trade_tick", "event_timestamp_ms": 1775133965256}])
+
+            manifest_path = build_run_replay_manifest(base_dir, "run123")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(manifest["scope"], "run")
+            self.assertEqual(manifest["source_run_id"], "run123")
+            self.assertEqual(manifest["total_record_count"], 1)
+            self.assertEqual(len(manifest["datasets"]["trade_tick"]), 1)
+            self.assertEqual(manifest["datasets"]["trade_tick"][0]["market"], "KRW-BTC")
+            self.assertEqual(manifest["datasets"]["trade_tick"][0]["source_run_id"], "run123")
+
+    def test_quality_report_summarizes_market_counts_and_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_dir = Path(tmpdir)
+            path = canonical_path(
+                base_dir,
+                "trade_tick",
+                "2026-04-02T12:45:05Z",
+                "run123",
+                market="KRW-BTC",
+            )
+            append_jsonl(
+                path,
+                [
+                    {
+                        "dataset": "trade_tick",
+                        "event_timestamp_ms": 1775133905256,
+                        "ingested_at": "2026-04-02T12:45:05Z",
+                    },
+                    {
+                        "dataset": "trade_tick",
+                        "event_timestamp_ms": 1775133906256,
+                        "ingested_at": "2026-04-02T12:45:06Z",
+                    },
+                ],
+            )
+            append_jsonl(
+                base_dir / "observability" / "freshness_alert.ndjson",
+                [
+                    {
+                        "run_id": "run123",
+                        "dataset": "trade_tick",
+                        "market": "KRW-BTC",
+                        "gap_ms": 12_500,
+                        "freshness_sla_ms": 10_000,
+                        "last_seen_event_timestamp_ms": 1775133906256,
+                        "alerted_at": "2026-04-02T12:45:20Z",
+                    }
+                ],
+            )
+            append_jsonl(
+                base_dir / "observability" / "schema_validation_counter.ndjson",
+                [
+                    {
+                        "run_id": "run123",
+                        "dataset": "trade_tick",
+                        "validated": 2,
+                        "accepted": 2,
+                        "rejected": 0,
+                        "emitted_at": "2026-04-02T12:45:20Z",
+                    }
+                ],
+            )
+
+            json_path, markdown_path = build_quality_report(base_dir, "run123", 10_000)
+            report = json.loads(json_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(markdown_path.exists())
+            self.assertEqual(report["source_run_id"], "run123")
+            self.assertEqual(report["total_record_count"], 2)
+            self.assertEqual(report["market_count"], 1)
+            market = report["markets"][0]
+            self.assertEqual(market["market"], "KRW-BTC")
+            self.assertEqual(market["record_count"], 2)
+            dataset = market["datasets"][0]
+            self.assertEqual(dataset["dataset"], "trade_tick")
+            self.assertEqual(dataset["record_count"], 2)
+            self.assertEqual(dataset["freshness_alert_count"], 1)
+            self.assertEqual(dataset["max_gap_ms"], 12_500)
+            self.assertIsNotNone(dataset["latest_event_age_ms"])
+            self.assertEqual(report["validation"][0]["accepted"], 2)
+
+    @patch("org_coin_data.pipeline.build_quality_report")
+    @patch("org_coin_data.pipeline.build_run_replay_manifest")
+    @patch("org_coin_data.pipeline.capture_live_public_data", new_callable=AsyncMock)
+    @patch("org_coin_data.pipeline.capture_rest_snapshots")
+    @patch("org_coin_data.pipeline.backfill_trade_ticks")
+    @patch("org_coin_data.pipeline.backfill_candle_1m")
+    @patch("org_coin_data.pipeline.ingest_market_catalog")
+    @patch("org_coin_data.pipeline.new_capture_id", return_value="run123")
+    def test_run_bootstrap_session_reuses_one_run_id_for_repeated_capture(
+        self,
+        _new_capture_id,
+        ingest_market_catalog_mock,
+        backfill_candle_mock,
+        backfill_trade_mock,
+        capture_rest_mock,
+        capture_live_mock,
+        build_manifest_mock,
+        build_quality_mock,
+    ) -> None:
+        build_manifest_mock.return_value = Path("/tmp/manifest-run123.json")
+        build_quality_mock.return_value = (
+            Path("/tmp/quality-run123.json"),
+            Path("/tmp/quality-run123.md"),
+        )
+
+        result = run_bootstrap_session(
+            Path("/tmp"),
+            ["KRW-BTC"],
+            candle_count=10,
+            trade_count=20,
+            ws_seconds=0,
+            channels=["ticker"],
+            iterations=3,
+            interval_seconds=0,
+            freshness_sla_ms=10_000,
+        )
+
+        ingest_market_catalog_mock.assert_called_once()
+        backfill_candle_mock.assert_called_once()
+        backfill_trade_mock.assert_called_once()
+        self.assertEqual(capture_rest_mock.call_count, 3)
+        self.assertEqual(capture_live_mock.call_count, 3)
+        build_manifest_mock.assert_called_once_with(Path("/tmp"), "run123")
+        build_quality_mock.assert_called_once_with(Path("/tmp"), "run123", 10_000)
+        self.assertEqual(result["run_id"], "run123")
+        self.assertEqual(result["iterations"], 3)
 
 
 if __name__ == "__main__":

@@ -142,6 +142,25 @@ class ManagedOrderManager implements OrderManager {
       );
     }
 
+    if (!context.marketSnapshot) {
+      return this.reject(
+        decisionId,
+        signal.signalId,
+        signal.market,
+        [
+          rejectReason(
+            "missing_market_snapshot",
+            "no market snapshot is loaded for this signal market",
+            {
+              market: signal.market,
+              receivedAt: context.receivedAt,
+            },
+          ),
+        ],
+        now,
+      );
+    }
+
     const evaluation = evaluateRisk({
       signal,
       snapshot: context.marketSnapshot,

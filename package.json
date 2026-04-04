@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "paper:session": "npm run build && node dist/src/cli/run-paper-session.js",
     "test": "npm run build && node --test dist/test/*.js"
   },
   "devDependencies": {

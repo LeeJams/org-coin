@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://org-coin.local/schemas/paper-session-scenario.schema.json",
+  "title": "PaperSessionScenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "events"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "clockAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reconcileAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "initialPortfolio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cashAvailable",
+        "dailyRealizedPnl",
+        "positions"
+      ],
+      "properties": {
+        "cashAvailable": {
+          "type": "number"
+        },
+        "dailyRealizedPnl": {
+          "type": "number"
+        },
+        "positions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "market",
+              "baseQuantity",
+              "avgEntryPrice",
+              "realizedPnl"
+            ],
+            "properties": {
+              "market": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,10}-[A-Z0-9]{2,20}$"
+              },
+              "baseQuantity": {
+                "type": "number",
+                "minimum": 0
+              },
+              "avgEntryPrice": {
+                "type": "number",
+                "minimum": 0
+              },
+              "realizedPnl": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "snapshot"
+            ],
+            "properties": {
+              "type": {
+                "const": "snapshot"
+              },
+              "snapshot": {
+                "$ref": "market-snapshot.schema.json"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "signal"
+            ],
+            "properties": {
+              "type": {
+                "const": "signal"
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "signal": {
+                "$ref": "signal-intent.schema.json"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "orderId",
+              "reason"
+            ],
+            "properties": {
+              "type": {
+                "const": "cancel"
+              },
+              "orderId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cancelledAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
