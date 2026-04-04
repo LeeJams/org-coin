@@ -174,5 +174,6 @@ npm run pm2:start:dry-run
 - passive feature 수집 운영 가이드는 [`docs/passive-feature-collection.md`](docs/passive-feature-collection.md)에 정리되어 있습니다.
 - `dry_run`은 기준 호가로 즉시 체결되는 낙관적 검증 모드이고, `paper`는 슬리피지와 수수료를 반영한 보수적 시뮬레이터입니다.
 - 예시 환경 변수 템플릿은 [`.env.example`](.env.example)에 있습니다.
+- `.env` 파일이 없으면 `npm run env:init`으로 템플릿에서 로컬 파일을 만들 수 있습니다.
 - 저장소가 페이퍼 전용으로 유지되는 동안 로컬 `.env`의 `BITHUMB_ACCESS_KEY`, `BITHUMB_SECRET_KEY`는 비워 두어야 합니다.
 - 실제 `.env` 파일과 채워진 비밀값은 절대 커밋하면 안 됩니다.

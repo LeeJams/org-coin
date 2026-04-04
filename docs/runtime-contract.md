@@ -4,6 +4,8 @@ Live trading is intentionally disabled in this repo. Any future live execution w
 
 `src/runtime/config.ts` is the code entrypoint for this contract. It merges `.env` and `process.env`, keeps paper-safe defaults when optional safety values are unset, and fails fast if live execution is enabled.
 
+`.env.example` is the committed template. `npm run env:init` materializes a local `.env` from that template when one does not exist, and it never overwrites an existing file.
+
 ## Required mode flags
 
 - `TRADING_MODE`: `dry_run`, `paper`, or `live`

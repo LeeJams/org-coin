@@ -50,7 +50,9 @@ npm run pm2:stop:dry-run
 
 ## Configuration
 
-The service reads `.env` plus process env. The main knobs are:
+The service reads `.env` plus process env. If `.env` is missing, run `npm run env:init` once or just use the PM2 start/restart commands, which now create the local file from `.env.example` automatically when needed.
+
+The main knobs are:
 
 - `DRY_RUN_ENTRY_PROFILE`
 - `DRY_RUN_LOOP_INTERVAL_SECONDS`

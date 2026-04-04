@@ -191,5 +191,6 @@ This repository does not require exchange API credentials for the current paper-
 - Reject-ledger summary shape is documented in [`schemas/reject-ledger.schema.json`](schemas/reject-ledger.schema.json)
 - NDJSON ledger event shape is documented in [`schemas/order-ledger-event.schema.json`](schemas/order-ledger-event.schema.json)
 - A checked-in placeholder template lives in [`.env.example`](.env.example)
+- Run `npm run env:init` to materialize a local `.env` from that template when the file is missing
 - Keep `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` blank in the local `.env` while the repo remains paper-only
 - Real `.env` files and any populated secret values must never be committed
