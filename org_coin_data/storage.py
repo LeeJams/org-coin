@@ -83,14 +83,41 @@ def _profile_suffix(profile: str) -> str:
     return "" if profile == "v1" else f"-{profile}"
 
 
+def _scenario_suffix(
+    entry_profile: str = "v1",
+    exit_profile: str = "balanced_v1",
+    synthetic_exit_policy: str = "force_bid",
+) -> str:
+    parts: list[str] = []
+    if entry_profile != "v1":
+        parts.append(f"entry-{entry_profile}")
+    if exit_profile != "balanced_v1":
+        parts.append(f"exit-{exit_profile}")
+    if synthetic_exit_policy != "force_bid":
+        parts.append(f"synthetic-{synthetic_exit_policy}")
+    return "" if not parts else "-" + "-".join(parts)
+
+
 def replay_preflight_report_path(
     base_dir: Path, run_id: str, suffix: str, profile: str = "v1"
 ) -> Path:
     return base_dir / "replay" / "reports" / f"preflight-{run_id}{_profile_suffix(profile)}.{suffix}"
 
 
-def replay_session_scenario_path(base_dir: Path, run_id: str, profile: str = "v1") -> Path:
-    return base_dir / "replay" / "scenarios" / f"session-{run_id}{_profile_suffix(profile)}.json"
+def replay_session_scenario_path(
+    base_dir: Path,
+    run_id: str,
+    profile: str = "v1",
+    *,
+    exit_profile: str = "balanced_v1",
+    synthetic_exit_policy: str = "force_bid",
+) -> Path:
+    return (
+        base_dir
+        / "replay"
+        / "scenarios"
+        / f"session-{run_id}{_scenario_suffix(profile, exit_profile, synthetic_exit_policy)}.json"
+    )
 
 
 def canonical_file_run_id(path: Path) -> str | None:

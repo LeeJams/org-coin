@@ -58,7 +58,7 @@ REST_TICKER_EXPECTED_OFFSET_MS = 9 * 60 * 60 * 1000
 REST_TICKER_ALIGNMENT_SKEW_MS = 4 * 60 * 60 * 1000
 
 
-def _raw_rest_envelope(dataset: str, path: str, request: dict, payload: list[dict]) -> tuple[str, str, dict]:
+def _raw_rest_envelope(dataset: str, path: str, request: dict, payload: object) -> tuple[str, str, dict]:
     capture_id = new_capture_id()
     captured_at = utcnow_iso()
     envelope = {
@@ -71,6 +71,35 @@ def _raw_rest_envelope(dataset: str, path: str, request: dict, payload: list[dic
         "payload": payload,
     }
     return capture_id, captured_at, envelope
+
+
+def _describe_upstream_payload(payload: object) -> str:
+    if isinstance(payload, dict):
+        parts = []
+        status = payload.get("status")
+        if status is not None:
+            parts.append(f"status={status}")
+        data = payload.get("data")
+        if isinstance(data, dict):
+            title = data.get("title")
+            if title is not None:
+                parts.append(f"title={title}")
+            maintenance_start = data.get("maintenanceStartAt")
+            maintenance_end = data.get("maintenanceEndAt")
+            if maintenance_start is not None or maintenance_end is not None:
+                parts.append(f"maintenance={maintenance_start}..{maintenance_end}")
+        return ", ".join(parts) if parts else f"dict keys={sorted(payload.keys())}"
+    return type(payload).__name__
+
+
+def _require_rest_list_payload(dataset: str, payload: object) -> list[dict]:
+    if not isinstance(payload, list):
+        raise ValueError(
+            f"{dataset} upstream returned non-list payload: {_describe_upstream_payload(payload)}"
+        )
+    if not all(isinstance(item, dict) for item in payload):
+        raise ValueError(f"{dataset} upstream returned a list with non-object entries")
+    return payload
 
 
 def _write_validated_records(
@@ -286,6 +315,7 @@ def ingest_market_catalog(base_dir: Path, markets: list[str], obs: Observability
         "market_catalog", "/v1/market/all", {"isDetails": True}, payload
     )
     append_jsonl(raw_rest_path(base_dir, "market_catalog", captured_at, obs.run_id), [envelope])
+    payload = _require_rest_list_payload("market_catalog", payload)
     records = normalize_market_catalog(payload, capture_id, captured_at, markets)
     return _write_validated_records(base_dir, "market_catalog", records, obs)
 

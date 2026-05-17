@@ -23,7 +23,7 @@ import type {
 import type { CreateOrderManagerOptions } from "./order-manager.js";
 import { buildRejectLedgerSummary } from "./ledger.js";
 
-export type SessionRunnerMode = Exclude<ExecutionMode, "live">;
+export type SessionRunnerMode = ExecutionMode;
 
 export interface PaperSessionSnapshotOutcome {
   type: "snapshot";
@@ -35,6 +35,10 @@ export interface PaperSessionSignalOutcome {
   type: "signal";
   market?: string;
   signalId?: string;
+  signal?: {
+    side?: string;
+    reasonCodes: string[];
+  };
   decision: OrderManagerDecision;
 }
 
@@ -73,15 +77,20 @@ function cloneSnapshot(snapshot: PaperSessionSnapshotEvent["snapshot"]) {
 
 function extractSignalMetadata(
   signal: unknown,
-): { market?: string; signalId?: string } {
+): { market?: string; signalId?: string; side?: string; reasonCodes: string[] } {
   if (typeof signal !== "object" || signal === null || Array.isArray(signal)) {
-    return {};
+    return { reasonCodes: [] };
   }
 
   const record = signal as Record<string, unknown>;
+  const reasonCodes = Array.isArray(record.reasonCodes)
+    ? record.reasonCodes.filter((reason): reason is string => typeof reason === "string")
+    : [];
   return {
     market: typeof record.market === "string" ? record.market : undefined,
     signalId: typeof record.signalId === "string" ? record.signalId : undefined,
+    side: typeof record.side === "string" ? record.side : undefined,
+    reasonCodes,
   };
 }
 
@@ -94,6 +103,9 @@ function cloneScenarioMetadata(
 
   return {
     ...metadata,
+    openPositionState: metadata.openPositionState
+      ? { ...metadata.openPositionState }
+      : metadata.openPositionState,
     summary: metadata.summary
       ? {
           ...metadata.summary,
@@ -132,15 +144,22 @@ export class PaperSessionRunner {
   }
 
   async submitSignal(event: PaperSessionSignalEvent): Promise<PaperSessionSignalOutcome> {
-    const { market, signalId } = extractSignalMetadata(event.signal);
+    const { market, signalId, side, reasonCodes } = extractSignalMetadata(event.signal);
     const decision = await this.manager.submitSignal(event.signal, {
       marketSnapshot: market ? this.latestSnapshots.get(market) : undefined,
-      receivedAt: event.receivedAt ?? event.signal.generatedAt,
+      receivedAt:
+        this.mode === "live"
+          ? undefined
+          : event.receivedAt ?? event.signal.generatedAt,
     });
     const outcome: PaperSessionSignalOutcome = {
       type: "signal",
       market,
       signalId,
+      signal: {
+        side,
+        reasonCodes,
+      },
       decision,
     };
 
@@ -190,12 +209,30 @@ export class PaperSessionRunner {
     return this.run(scenario.events, scenario.reconcileAt, scenario.metadata);
   }
 
-  finalize(
+  private async cancelLingeringOrders(reconcileAt?: string): Promise<void> {
+    const openOrders = this.manager
+      .getLedgerSnapshot()
+      .orders.filter((order) =>
+        ["accepted", "open", "partially_filled"].includes(order.status),
+      );
+    for (const order of openOrders) {
+      await this.manager.cancelOrder(
+        order.orderId,
+        "session_finalize_auto_cancel",
+        reconcileAt,
+      );
+    }
+  }
+
+  async finalize(
     reconcileAt?: string,
     scenarioMetadata?: PaperSessionScenarioMetadata,
-  ): PaperSessionReport {
+  ): Promise<PaperSessionReport> {
+    await this.cancelLingeringOrders(reconcileAt);
     const ledger = this.manager.getLedgerSnapshot();
-    const reconciliation = this.manager.reconcileSession(reconcileAt);
+    const reconciliation = this.manager.reconcileSession(reconcileAt, {
+      allowOpenPositions: scenarioMetadata?.carryOpenPositions === true,
+    });
 
     return {
       schemaVersion: "1.0.0",

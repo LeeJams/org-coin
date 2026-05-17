@@ -41,6 +41,12 @@ def _metrics_from_record(record: dict) -> EntryMetrics:
         spread_bps=float(record["spread_bps"]),
         turnover_24h_krw=float(record["turnover_24h_krw"]),
         window_coverage_sec=float(record["window_coverage_sec"]),
+        market=str(record.get("market", "")),
+        ret_1m_bps=(
+            float(record["ret_1m_bps"])
+            if record.get("ret_1m_bps") is not None
+            else None
+        ),
     )
 
 
@@ -177,6 +183,11 @@ def build_preflight_report(
                     "suppression_reason": latest_decision.suppression_reason,
                     "metrics": {
                         "ret_5m_bps": float(latest_record["ret_5m_bps"]),
+                        "ret_1m_bps": (
+                            float(latest_record["ret_1m_bps"])
+                            if latest_record.get("ret_1m_bps") is not None
+                            else None
+                        ),
                         "buy_notional_share_60s": float(latest_record["buy_notional_share_60s"]),
                         "depth_ratio_l5": float(latest_record["depth_ratio_l5"]),
                         "spread_bps": float(latest_record["spread_bps"]),

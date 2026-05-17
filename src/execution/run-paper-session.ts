@@ -11,6 +11,7 @@ import {
   createPaperSessionRunner,
   type PaperSessionReport,
 } from "./session-runner.js";
+import type { ExecutionMode } from "./types.js";
 
 export class InvalidPaperSessionScenarioError extends Error {
   constructor(readonly issues: unknown) {
@@ -23,6 +24,17 @@ export interface ExecutePaperSessionScenarioOptions {
   scenarioPath: string;
   cwd?: string;
   runtimeConfig?: LoadExecutionRuntimeConfigOptions;
+}
+
+export function createScenarioReplayClock(
+  tradingMode: ExecutionMode,
+  clockAt: string | undefined,
+): (() => Date) | undefined {
+  if (tradingMode === "live" || !clockAt) {
+    return undefined;
+  }
+
+  return () => new Date(clockAt);
 }
 
 export async function executePaperSessionScenario(
@@ -43,9 +55,10 @@ export async function executePaperSessionScenario(
     ...(options.runtimeConfig ?? {}),
   });
   const runner = createPaperSessionRunner(runtimeConfig, {
-    clock: validation.value.clockAt
-      ? () => new Date(validation.value.clockAt!)
-      : undefined,
+    clock: createScenarioReplayClock(
+      runtimeConfig.tradingMode,
+      validation.value.clockAt,
+    ),
     portfolio: validation.value.initialPortfolio,
   });
   const report = await runner.runScenario(validation.value);

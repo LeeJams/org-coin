@@ -1,0 +1,181 @@
+{
+  "baseline": {
+    "sessionCount": 198,
+    "tradedSessionCount": 90,
+    "sessionsWithOrders": 92,
+    "sessionsWithRejects": 46,
+    "sessionsWithOpenPositions": 61,
+    "buyFillCount": 81,
+    "sellFillCount": 84,
+    "closedTradeCount": 84,
+    "profitableClosedTrades": 1,
+    "losingClosedTrades": 83,
+    "flatClosedTrades": 0,
+    "grossPnlKrw": -87335.91561911747,
+    "netPnlKrw": -142958.07841880916,
+    "avgGrossBpsPerTrade": -12.371297963319378,
+    "avgNetBpsPerTrade": -20.366349444134055,
+    "totalFeesKrw": 55647.76578262732,
+    "totalBuyNotionalKrw": 69635378.91476329,
+    "totalSellNotionalKrw": 69484035.5418051,
+    "reentryUnder15mCount": 36,
+    "sellReasonCounts": {
+      "UNKNOWN": 42,
+      "EXIT_RET_1M_NEG": 42
+    },
+    "holdBuckets": {
+      "<=5m": {
+        "trades": 41,
+        "gross": -37680.5108801891,
+        "net": -65998.37654857179
+      },
+      "5-15m": {
+        "trades": 30,
+        "gross": -37777.351504780294,
+        "net": -58379.44385963422
+      },
+      ">15m": {
+        "trades": 13,
+        "gross": -11878.053234148054,
+        "net": -18580.258010603127
+      }
+    },
+    "byMarket": {
+      "KRW-ETH": {
+        "trades": 23,
+        "gross": -24034.333810301105,
+        "net": -39644.25824632107,
+        "fees": 15609.92443601998
+      },
+      "KRW-XRP": {
+        "trades": 50,
+        "gross": -57075.66957360575,
+        "net": -92345.31248890936,
+        "fees": 35269.64291530364
+      },
+      "KRW-BTC": {
+        "trades": 11,
+        "gross": -6225.912235210601,
+        "net": -10968.50768357869,
+        "fees": 4742.595448368091
+      }
+    },
+    "byExitReason": {
+      "UNKNOWN": {
+        "trades": 42,
+        "gross": -45770.57644390745,
+        "net": -75731.72470566542
+      },
+      "EXIT_RET_1M_NEG": {
+        "trades": 42,
+        "gross": -41565.33917521002,
+        "net": -67226.35371314373
+      }
+    },
+    "finalEquityKrw": 856987.461259161,
+    "runCumulativeReturnPct": -14.301253874083898
+  },
+  "candidate": {
+    "sessionCount": 198,
+    "tradedSessionCount": 19,
+    "sessionsWithOrders": 19,
+    "sessionsWithRejects": 21,
+    "sessionsWithOpenPositions": 38,
+    "buyFillCount": 10,
+    "sellFillCount": 9,
+    "closedTradeCount": 9,
+    "profitableClosedTrades": 3,
+    "losingClosedTrades": 6,
+    "flatClosedTrades": 0,
+    "grossPnlKrw": -5572.476497268425,
+    "netPnlKrw": -8918.849921613599,
+    "avgGrossBpsPerTrade": -11.770984503611563,
+    "avgNetBpsPerTrade": -19.76627610981012,
+    "totalFeesKrw": 3371.9764072808125,
+    "totalBuyNotionalKrw": 4249760.476019197,
+    "totalSellNotionalKrw": 4180180.542182834,
+    "reentryUnder15mCount": 0,
+    "sellReasonCounts": {
+      "EXIT_TIME_STOP_15M": 6,
+      "EXIT_STOP_LOSS": 1,
+      "EXIT_RET_1M_NEG": 2
+    },
+    "holdBuckets": {
+      "<=5m": {
+        "trades": 0,
+        "gross": 0.0,
+        "net": 0.0
+      },
+      "5-15m": {
+        "trades": 2,
+        "gross": -1892.8993056884142,
+        "net": -2686.668429005854
+      },
+      ">15m": {
+        "trades": 7,
+        "gross": -3679.5771915800105,
+        "net": -6232.181492607745
+      }
+    },
+    "byMarket": {
+      "KRW-ETH": {
+        "trades": 6,
+        "gross": -2184.8757028254677,
+        "net": -4337.7215974481505,
+        "fees": 2152.8458946226815
+      },
+      "KRW-XRP": {
+        "trades": 3,
+        "gross": -3387.600794442957,
+        "net": -4581.12832416545,
+        "fees": 1193.527529722493
+      }
+    },
+    "byExitReason": {
+      "EXIT_TIME_STOP_15M": {
+        "trades": 6,
+        "gross": -5094.467386867453,
+        "net": -7251.982903933826
+      },
+      "EXIT_STOP_LOSS": {
+        "trades": 1,
+        "gross": -4635.378561086067,
+        "net": -5031.162648878118
+      },
+      "EXIT_RET_1M_NEG": {
+        "trades": 2,
+        "gross": 4157.369450685094,
+        "net": 3364.2956311983426
+      }
+    },
+    "finalEquityKrw": 991026.6897563556,
+    "runCumulativeReturnPct": -0.897331024364445,
+    "failures": [],
+    "scenarioAggregate": {
+      "entrySignals": 10,
+      "exitSignals": 30,
+      "snapshotCount": 7558,
+      "syntheticCloseCount": 0,
+      "marketsTraded": [
+        "KRW-BTC",
+        "KRW-ETH",
+        "KRW-XRP"
+      ],
+      "suppressedByReason": {
+        "SUPPRESS_DATA_STALE": 4097,
+        "SUPPRESS_WEAK_CONFLUENCE": 1819
+      }
+    }
+  },
+  "delta": {
+    "netPnlKrw": 134039.22849719555,
+    "grossPnlKrw": 81763.43912184905,
+    "totalFeesKrw": -52275.78937534651,
+    "closedTradeCount": -75,
+    "buyFillCount": -71,
+    "sellFillCount": -75,
+    "runCumulativeReturnPct": 13.403922849719454,
+    "avgNetBpsPerTrade": 0.600073334323934,
+    "reentryUnder15mCount": -36
+  }
+}

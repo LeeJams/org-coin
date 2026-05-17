@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 from org_coin_data.passive_features import build_passive_feature_report
 from org_coin_data.storage import append_jsonl, canonical_path
@@ -57,6 +58,51 @@ class PassiveFeatureReportTest(unittest.TestCase):
             self.assertEqual(record["latest_trade_ts"], 1775261105000)
             self.assertEqual(record["date_kst"], "2026-04-04")
 
+    def test_build_passive_feature_report_uses_ws_market_data_sources(self) -> None:
+        run_id = "run-ws-only"
+        market = "KRW-ETH"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_dir = Path(tmpdir)
+            self._write_trade_ticks(base_dir, run_id, market)
+            self._write_ticker_event(base_dir, run_id, market, source="bithumb_ws")
+            self._write_orderbook(
+                base_dir,
+                run_id,
+                market,
+                source="bithumb_ws",
+                events=[
+                    {
+                        "event_timestamp_ms": 1775261109000,
+                        "capture_id": "orderbook-capture-1",
+                        "best_ask_price": 107.1,
+                        "best_bid_price": 106.9,
+                    },
+                    {
+                        "event_timestamp_ms": 1775261114000,
+                        "capture_id": "orderbook-capture-2",
+                        "best_ask_price": 107.2,
+                        "best_bid_price": 107.0,
+                    },
+                ],
+            )
+            self._write_orderbook_levels(
+                base_dir,
+                run_id,
+                market,
+                source="bithumb_ws",
+                captures=[
+                    ("orderbook-capture-1", 1775261109000),
+                    ("orderbook-capture-2", 1775261114000),
+                ],
+            )
+
+            json_path, _ = build_passive_feature_report(base_dir, run_id)
+            report = json.loads(json_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(report["market_count"], 1)
+            self.assertEqual(report["snapshot_count"], 2)
+            self.assertEqual(report["markets"][0]["snapshot_count"], 2)
+
     def _write_trade_ticks(self, base_dir: Path, run_id: str, market: str) -> None:
         path = canonical_path(
             base_dir,
@@ -79,7 +125,14 @@ class PassiveFeatureReportTest(unittest.TestCase):
             ],
         )
 
-    def _write_ticker_event(self, base_dir: Path, run_id: str, market: str) -> None:
+    def _write_ticker_event(
+        self,
+        base_dir: Path,
+        run_id: str,
+        market: str,
+        *,
+        source: str = "bithumb_rest",
+    ) -> None:
         path = canonical_path(
             base_dir,
             "ticker_event",
@@ -117,15 +170,55 @@ class PassiveFeatureReportTest(unittest.TestCase):
                     "is_trading_suspended": False,
                     "delisting_date": "",
                     "market_warning": "NONE",
-                    "stream_type": "REST_SNAPSHOT",
-                    "source": "bithumb_rest",
+                    "stream_type": "REST_SNAPSHOT" if source == "bithumb_rest" else "REALTIME",
+                    "source": source,
                     "capture_id": "ticker-capture-1",
                     "ingested_at": "2026-04-04T00:05:10Z",
+                },
+                {
+                    "dataset": "ticker_event",
+                    "schema_version": "v1",
+                    "market": market,
+                    "event_timestamp_ms": 1775261114000,
+                    "exchange_timestamp_raw": "1775261114000",
+                    "trade_timestamp_ms": 1775261114000,
+                    "opening_price": 100,
+                    "high_price": 108,
+                    "low_price": 99,
+                    "trade_price": 108,
+                    "prev_closing_price": 98,
+                    "change": "RISE",
+                    "change_price": 10,
+                    "signed_change_price": 10,
+                    "change_rate": 0.10,
+                    "signed_change_rate": 0.10,
+                    "trade_volume": 1,
+                    "acc_trade_price": 510000,
+                    "acc_trade_price_24h": 123556789,
+                    "acc_trade_volume": 4010,
+                    "acc_trade_volume_24h": 5010,
+                    "ask_bid": "UNKNOWN",
+                    "market_state": "ACTIVE",
+                    "is_trading_suspended": False,
+                    "delisting_date": "",
+                    "market_warning": "NONE",
+                    "stream_type": "REST_SNAPSHOT" if source == "bithumb_rest" else "REALTIME",
+                    "source": source,
+                    "capture_id": "ticker-capture-2",
+                    "ingested_at": "2026-04-04T00:05:14Z",
                 }
             ],
         )
 
-    def _write_orderbook(self, base_dir: Path, run_id: str, market: str) -> None:
+    def _write_orderbook(
+        self,
+        base_dir: Path,
+        run_id: str,
+        market: str,
+        *,
+        source: str = "bithumb_rest",
+        events: Optional[list[dict]] = None,
+    ) -> None:
         path = canonical_path(
             base_dir,
             "orderbook_snapshot",
@@ -133,6 +226,14 @@ class PassiveFeatureReportTest(unittest.TestCase):
             run_id,
             market=market,
         )
+        snapshot_events = events or [
+            {
+                "event_timestamp_ms": 1775261109000,
+                "capture_id": "orderbook-capture-1",
+                "best_ask_price": 107.1,
+                "best_bid_price": 106.9,
+            }
+        ]
         append_jsonl(
             path,
             [
@@ -140,23 +241,32 @@ class PassiveFeatureReportTest(unittest.TestCase):
                     "dataset": "orderbook_snapshot",
                     "schema_version": "v1",
                     "market": market,
-                    "event_timestamp_ms": 1775261109000,
-                    "exchange_timestamp_raw": "1775261109000",
+                    "event_timestamp_ms": event["event_timestamp_ms"],
+                    "exchange_timestamp_raw": str(event["event_timestamp_ms"]),
                     "aggregation_level": 1,
                     "total_ask_size": 5,
                     "total_bid_size": 10,
-                    "best_ask_price": 107.1,
-                    "best_bid_price": 106.9,
+                    "best_ask_price": event["best_ask_price"],
+                    "best_bid_price": event["best_bid_price"],
                     "level_count": 5,
-                    "stream_type": "REST_SNAPSHOT",
-                    "source": "bithumb_rest",
-                    "capture_id": "orderbook-capture-1",
+                    "stream_type": "REST_SNAPSHOT" if source == "bithumb_rest" else "REALTIME",
+                    "source": source,
+                    "capture_id": event["capture_id"],
                     "ingested_at": "2026-04-04T00:05:09Z",
                 }
+                for event in snapshot_events
             ],
         )
 
-    def _write_orderbook_levels(self, base_dir: Path, run_id: str, market: str) -> None:
+    def _write_orderbook_levels(
+        self,
+        base_dir: Path,
+        run_id: str,
+        market: str,
+        *,
+        source: str = "bithumb_rest",
+        captures: Optional[list[tuple[str, int]]] = None,
+    ) -> None:
         path = canonical_path(
             base_dir,
             "orderbook_level",
@@ -164,14 +274,13 @@ class PassiveFeatureReportTest(unittest.TestCase):
             run_id,
             market=market,
         )
+        level_captures = captures or [("orderbook-capture-1", 1775261109000)]
         append_jsonl(
             path,
             [
-                self._orderbook_level(market, 1775261109000, "orderbook-capture-1", 0, 1, 2),
-                self._orderbook_level(market, 1775261109000, "orderbook-capture-1", 1, 1, 2),
-                self._orderbook_level(market, 1775261109000, "orderbook-capture-1", 2, 1, 2),
-                self._orderbook_level(market, 1775261109000, "orderbook-capture-1", 3, 1, 2),
-                self._orderbook_level(market, 1775261109000, "orderbook-capture-1", 4, 1, 2),
+                self._orderbook_level(market, timestamp_ms, capture_id, level_index, 1, 2, source=source)
+                for capture_id, timestamp_ms in level_captures
+                for level_index in range(5)
             ],
         )
 
@@ -206,6 +315,8 @@ class PassiveFeatureReportTest(unittest.TestCase):
         level_index: int,
         ask_size: float,
         bid_size: float,
+        *,
+        source: str = "bithumb_rest",
     ) -> dict:
         return {
             "dataset": "orderbook_level",
@@ -219,8 +330,8 @@ class PassiveFeatureReportTest(unittest.TestCase):
             "bid_price": 106.9 - level_index,
             "ask_size": ask_size,
             "bid_size": bid_size,
-            "stream_type": "REST_SNAPSHOT",
-            "source": "bithumb_rest",
+            "stream_type": "REST_SNAPSHOT" if source == "bithumb_rest" else "REALTIME",
+            "source": source,
             "capture_id": capture_id,
             "ingested_at": "2026-04-04T00:05:09Z",
         }

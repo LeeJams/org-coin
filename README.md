@@ -186,6 +186,8 @@ This repository does not require exchange API credentials for the current paper-
 - Future runtime inputs are documented in [`docs/runtime-contract.md`](docs/runtime-contract.md)
 - PM2 dry-run service operations live in [`docs/pm2-dry-run.md`](docs/pm2-dry-run.md)
 - Passive feature collection guidance lives in [`docs/passive-feature-collection.md`](docs/passive-feature-collection.md)
+- Local storage and analysis guidance lives in [`docs/local-storage-analysis.md`](docs/local-storage-analysis.md)
+- Strategy research handoff and live-candidate interpretation live in [`AGENTS.md`](AGENTS.md) and [`docs/pm2-dry-run.md`](docs/pm2-dry-run.md). As of 2026-05-17, research is no longer locked to BTC-only uptrend capture, and legacy BTC `confirm3` / micro-momentum must not be resumed as the default live path without fresh evidence.
 - Runtime loading lives in [`src/runtime/config.ts`](src/runtime/config.ts)
 - Session input shape is documented in [`schemas/paper-session-scenario.schema.json`](schemas/paper-session-scenario.schema.json)
 - Reject-ledger summary shape is documented in [`schemas/reject-ledger.schema.json`](schemas/reject-ledger.schema.json)
@@ -193,3 +195,29 @@ This repository does not require exchange API credentials for the current paper-
 - A checked-in placeholder template lives in [`.env.example`](.env.example)
 - Keep `BITHUMB_ACCESS_KEY` and `BITHUMB_SECRET_KEY` blank in the local `.env` while the repo remains paper-only
 - Real `.env` files and any populated secret values must never be committed
+
+## Current Research State
+
+As of 2026-05-17, deleted `var/` artifacts mean recent paper readiness cannot be inferred from local runtime logs. Regenerate evidence before any live decision.
+
+Retired baseline:
+
+- BTC `confirm3` / 15-second micro-momentum is observation-only. Prior audits showed negative or insufficient traded PnL, time-stop losses, and no reliable suppressed-entry expectancy.
+- BTC 240m momentum remains a historical reference path, not an automatic live candidate. It requires fresh realized paper exits, benchmark comparison, and readiness gates.
+
+Allowed next strategy paths:
+
+- Execution-clean multi-market time-series scans: change the variable from BTC-only to an executable KRW market universe, then require positive train/test medians, walk-forward robustness, realistic fees, and paper reconciliation before PM2 observation.
+- Volatility breakout scans: use public Bithumb candles to test volatility contraction plus breakout/volume confirmation with 35-50 bps round-trip cost. Treat scan output as research evidence only until orderbook/paper validation exists.
+- Spot-perp carry watch: keep it as measurement only unless completed funding-window economics remain positive after spot fee, perp fee, USDT/KRW conversion, depth, spreads, and exit buffer.
+
+Useful commands:
+
+```bash
+npm run dry-run:analyze-volatility-breakout -- --top-markets 40 --unit-minutes 60 --max-candles 5000 --fee-round-trip-bps 50 --notional-krw 500000 --output var/reports/current-top40-60m-volatility-breakout-fee50-YYYYMMDD.json
+npm run dry-run:analyze-bithumb-execution-universe
+npm run dry-run:analyze-bithumb-momentum
+npm run dry-run:discover-spot-perp-carry-current-carry
+npm run dry-run:gate-all-running-paper-candidate
+npm run dry-run:gate-all-running-live-ready
+```

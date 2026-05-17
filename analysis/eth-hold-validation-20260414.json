@@ -1,0 +1,90 @@
+{
+  "baseline": {
+    "sessionCount": 154,
+    "tradedSessionCount": 20,
+    "buyFillCount": 10,
+    "sellFillCount": 10,
+    "closedTradeCount": 10,
+    "grossPnlKrw": 9885.523455915678,
+    "netPnlKrw": 7030.75170265622,
+    "avgGrossBpsPerTrade": 25.258032748780536,
+    "avgNetBpsPerTrade": 17.24792953568102,
+    "byMarket": {
+      "KRW-BTC": {
+        "trades": 4,
+        "grossPnlKrw": 8317.828529350081,
+        "netPnlKrw": 7133.351538310393,
+        "avgGrossBps": 62.53382305811289,
+        "avgNetBps": 54.50880952888964
+      },
+      "KRW-ETH": {
+        "trades": 6,
+        "grossPnlKrw": 1567.6949265655971,
+        "netPnlKrw": -102.59983565417349,
+        "avgGrossBps": 0.40750587589230136,
+        "avgNetBps": -7.592657126458057
+      }
+    },
+    "byExitReason": {
+      "EXIT_RET_1M_NEG": {
+        "trades": 6,
+        "gross": 11358.052758879374,
+        "net": 9369.053799400399
+      },
+      "UNKNOWN": {
+        "trades": 4,
+        "gross": -1472.529302963693,
+        "net": -2338.3020967441807
+      }
+    },
+    "finalEquityKrw": 1004523.7613384752,
+    "runCumulativeReturnPct": 0.45237613384752073
+  },
+  "candidate": {
+    "sessionCount": 154,
+    "tradedSessionCount": 19,
+    "buyFillCount": 10,
+    "sellFillCount": 9,
+    "closedTradeCount": 9,
+    "grossPnlKrw": 7892.744046107216,
+    "netPnlKrw": 5040.311098384403,
+    "avgGrossBpsPerTrade": 24.196701492741212,
+    "avgNetBpsPerTrade": 16.18702281214411,
+    "byMarket": {
+      "KRW-BTC": {
+        "trades": 4,
+        "grossPnlKrw": 8317.682797102043,
+        "netPnlKrw": 7133.224100851448,
+        "avgGrossBps": 62.53383411873885,
+        "avgNetBps": 54.508820585091364
+      },
+      "KRW-ETH": {
+        "trades": 5,
+        "grossPnlKrw": -424.9387509948283,
+        "netPnlKrw": -2092.913002467047,
+        "avgGrossBps": -6.473004608056904,
+        "avgNetBps": -14.47041540621368
+      }
+    },
+    "byExitReason": {
+      "EXIT_RET_1M_NEG": {
+        "trades": 6,
+        "gross": 11355.423863438029,
+        "net": 9367.23983935326
+      },
+      "EXIT_TIME_STOP_15M": {
+        "trades": 3,
+        "gross": -3462.6798173308134,
+        "net": -4326.928740968857
+      }
+    },
+    "finalEquityKrw": 1002538.324311231,
+    "runCumulativeReturnPct": 0.25383243112311327,
+    "failures": []
+  },
+  "delta": {
+    "netPnlKrw": -1990.4406042718174,
+    "grossPnlKrw": -1992.7794098084623,
+    "runCumulativeReturnPct": -0.19854370272440747
+  }
+}

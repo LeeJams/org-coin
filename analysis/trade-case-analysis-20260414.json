@@ -1,0 +1,536 @@
+{
+  "ethTrades": [
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-13T16:09:29Z",
+      "exitOccurredAt": "2026-04-13T16:26:44.000Z",
+      "holdMinutes": 17.25,
+      "grossPnlKrw": 1783.9085191894683,
+      "netPnlKrw": 1382.4338053125803,
+      "grossBps": 35.610408186539324,
+      "netBps": 27.596164023264702,
+      "entryAvgPrice": 3295631.8758895,
+      "exitPrice": 3307367.7555227997,
+      "entryFeeAllocated": 200.38057523460603,
+      "exitFee": 201.09413864228182,
+      "entrySignalId": "b186c12cfe784b3b893cab19a3b9ff27-KRW-ETH-entry-1776096569916",
+      "exitSignalId": "7f0e9ed40246492db4326ea3fed13071-KRW-ETH-exit-1776097604953",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-161052Z-92cec1ed/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-162658Z-58af0eea/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-b186c12cfe784b3b893cab19a3b9ff27-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-7f0e9ed40246492db4326ea3fed13071-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_HIGH"
+      ],
+      "exitReasonCodes": [
+        "EXIT_RET_1M_NEG"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.967095,
+        "depth_ratio_l5": 2.40211,
+        "ret_1m_bps": 9.113001,
+        "ret_5m_bps": 27.388923,
+        "spread_bps": 3.035362,
+        "turnover_24h_krw": 45795451791.24349,
+        "window_coverage_sec": 57.779
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.117159,
+        "depth_ratio_l5": 2.31761,
+        "ret_1m_bps": -3.021148,
+        "ret_5m_bps": 18.165304,
+        "spread_bps": 3.022518,
+        "turnover_24h_krw": 46345609791.20208,
+        "window_coverage_sec": 43.772
+      },
+      "entryConfidenceTier": "high",
+      "entrySizingValue": 500855.39,
+      "marketStartToEndPctDuringHold": 0.4248861911987811,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-13T16:33:29Z",
+      "exitOccurredAt": "2026-04-13T17:22:14.000Z",
+      "holdMinutes": 48.75,
+      "grossPnlKrw": -169.34384293171038,
+      "netPnlKrw": -229.74709413759987,
+      "grossBps": -22.403317220592218,
+      "netBps": -30.39435589370398,
+      "entryAvgPrice": 3315295.4354749,
+      "exitPrice": 3307868.0739428075,
+      "entryFeeAllocated": 30.23549437153109,
+      "exitFee": 30.16775683435841,
+      "entrySignalId": "5db06f3d49f743e2a59256cb6f5e96f9-KRW-ETH-entry-1776098009936",
+      "exitSignalId": "d44e7a9752fd44d3bed401aa9a9a2d57-KRW-ETH-exit-1776100934959",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-163501Z-811e3df9/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-172318Z-fa802493/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-5db06f3d49f743e2a59256cb6f5e96f9-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-d44e7a9752fd44d3bed401aa9a9a2d57-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.870697,
+        "depth_ratio_l5": 2.320788,
+        "ret_1m_bps": 18.137848,
+        "ret_5m_bps": 24.198427,
+        "spread_bps": 3.017957,
+        "turnover_24h_krw": 46676497903.44763,
+        "window_coverage_sec": 56.469
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.950529,
+        "depth_ratio_l5": 2.485823,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": 6.045949,
+        "spread_bps": 3.021604,
+        "turnover_24h_krw": 47866666032.31528,
+        "window_coverage_sec": 10.888
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 75559.2,
+      "marketStartToEndPctDuringHold": -0.12070006035003189,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T00:18:59Z",
+      "exitOccurredAt": "2026-04-14T00:44:44.000Z",
+      "holdMinutes": 25.75,
+      "grossPnlKrw": -760.5435152962988,
+      "netPnlKrw": -1163.2072776737375,
+      "grossBps": -15.098837693353266,
+      "netBps": -23.092798158275926,
+      "entryAvgPrice": 3496639.9115108005,
+      "exitPrice": 3491360.3916612,
+      "entryFeeAllocated": 201.4839898917786,
+      "exitFee": 201.17977248566007,
+      "entrySignalId": "87ccf67114d04d0481ce3bb52a6be203-KRW-ETH-entry-1776125939799",
+      "exitSignalId": "dccbe9f1ee6b476ebfa80c271e7c972e-KRW-ETH-exit-1776127484425",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-002141Z-dc9b0a3a/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-004550Z-b37d5cb3/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-87ccf67114d04d0481ce3bb52a6be203-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-dccbe9f1ee6b476ebfa80c271e7c972e-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.719447,
+        "depth_ratio_l5": 1.417033,
+        "ret_1m_bps": -8.576329,
+        "ret_5m_bps": 22.942357,
+        "spread_bps": 2.860821,
+        "turnover_24h_krw": 83104495292.71724,
+        "window_coverage_sec": 57.345
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.635949,
+        "depth_ratio_l5": 5.620461,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": -2.862049,
+        "spread_bps": 2.863278,
+        "turnover_24h_krw": 83563477132.08972,
+        "window_coverage_sec": 55.378
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503617.792,
+      "marketStartToEndPctDuringHold": -0.05722460658083017,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T03:32:44Z",
+      "exitOccurredAt": "2026-04-14T03:47:59.000Z",
+      "holdMinutes": 15.25,
+      "grossPnlKrw": -14.613163690123706,
+      "netPnlKrw": -26.502694395599757,
+      "grossBps": -9.827794414103971,
+      "netBps": -17.823863296338335,
+      "entryAvgPrice": 3498639.9914565,
+      "exitPrice": 3495201.6,
+      "entryFeeAllocated": 5.947687985476049,
+      "exitFee": 5.9418427199999995,
+      "entrySignalId": "6f1a5b3b3bb74e3a990272abb7656eda-KRW-ETH-entry-1776137564969",
+      "exitSignalId": "c99fc1d7df854f098289934b48d88984-KRW-ETH-exit-1776138479926",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-033448Z-fad366e8/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-035053Z-80358c76/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-6f1a5b3b3bb74e3a990272abb7656eda-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-c99fc1d7df854f098289934b48d88984-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.949141,
+        "depth_ratio_l5": 2.763877,
+        "ret_1m_bps": 2.860412,
+        "ret_5m_bps": 17.187052,
+        "spread_bps": 2.859185,
+        "turnover_24h_krw": 91757769162.84668,
+        "window_coverage_sec": 58.844
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.715122,
+        "depth_ratio_l5": 1.650305,
+        "ret_1m_bps": -2.858776,
+        "ret_5m_bps": -8.571429,
+        "spread_bps": 2.858368,
+        "turnover_24h_krw": 91910855599.11357,
+        "window_coverage_sec": 56.873
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503561.415,
+      "marketStartToEndPctDuringHold": 0.02859593937660776,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T03:32:44Z",
+      "exitOccurredAt": "2026-04-14T04:13:59.000Z",
+      "holdMinutes": 41.25,
+      "grossPnlKrw": -528.0287810455602,
+      "netPnlKrw": -918.8450305372437,
+      "grossBps": -10.802899206918285,
+      "netBps": -18.798578047235516,
+      "entryAvgPrice": 3498639.9914565,
+      "exitPrice": 3494860.4459376,
+      "entryFeeAllocated": 195.5137305020509,
+      "exitFee": 195.30251898963266,
+      "entrySignalId": "6f1a5b3b3bb74e3a990272abb7656eda-KRW-ETH-entry-1776137564969",
+      "exitSignalId": "0f36270d47bc4e34a100d77f82ac7300-KRW-ETH-exit-1776140039890",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-033448Z-fad366e8/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-041501Z-363e5f1c/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-6f1a5b3b3bb74e3a990272abb7656eda-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-0f36270d47bc4e34a100d77f82ac7300-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.949141,
+        "depth_ratio_l5": 2.763877,
+        "ret_1m_bps": 2.860412,
+        "ret_5m_bps": 17.187052,
+        "spread_bps": 2.859185,
+        "turnover_24h_krw": 91757769162.84668,
+        "window_coverage_sec": 58.844
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.378731,
+        "depth_ratio_l5": 1.643877,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": -5.717553,
+        "spread_bps": 5.719188,
+        "turnover_24h_krw": 91893491646.20929,
+        "window_coverage_sec": 49.141
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503561.415,
+      "marketStartToEndPctDuringHold": -0.02859593937660776,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T06:20:59Z",
+      "exitOccurredAt": "2026-04-14T06:54:14.000Z",
+      "holdMinutes": 33.25,
+      "grossPnlKrw": 1256.3157103398219,
+      "netPnlKrw": 853.268455777427,
+      "grossBps": 24.967475603782226,
+      "netBps": 16.957488613540715,
+      "entryAvgPrice": 3492639.7516853996,
+      "exitPrice": 3501359.9914647,
+      "entryFeeAllocated": 201.27236413912945,
+      "exitFee": 201.77489042326542,
+      "entrySignalId": "c93c1379a6304a3f861b6f9c13b7193a-KRW-ETH-entry-1776147659953",
+      "exitSignalId": "852e78ac61a14354a1c749aa9fbcdc4e-KRW-ETH-exit-1776149654981",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-062344Z-9317d9df/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-065555Z-26caf3b6/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-c93c1379a6304a3f861b6f9c13b7193a-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-852e78ac61a14354a1c749aa9fbcdc4e-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_RET_1M_NEG"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.850694,
+        "depth_ratio_l5": 2.408254,
+        "ret_1m_bps": 8.598452,
+        "ret_5m_bps": 17.211704,
+        "spread_bps": 2.864099,
+        "turnover_24h_krw": 92397046658.77682,
+        "window_coverage_sec": 56.181
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.993392,
+        "depth_ratio_l5": 1.494362,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": 2.856327,
+        "spread_bps": 2.855103,
+        "turnover_24h_krw": 93380576545.59596,
+        "window_coverage_sec": 57.437
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503088.742,
+      "marketStartToEndPctDuringHold": 0.286368843069873,
+      "trancheCount": 1
+    }
+  ],
+  "timeStopTrades": [
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-13T16:33:29Z",
+      "exitOccurredAt": "2026-04-13T17:22:14.000Z",
+      "holdMinutes": 48.75,
+      "grossPnlKrw": -169.34384293171038,
+      "netPnlKrw": -229.74709413759987,
+      "grossBps": -22.403317220592218,
+      "netBps": -30.39435589370398,
+      "entryAvgPrice": 3315295.4354749,
+      "exitPrice": 3307868.0739428075,
+      "entryFeeAllocated": 30.23549437153109,
+      "exitFee": 30.16775683435841,
+      "entrySignalId": "5db06f3d49f743e2a59256cb6f5e96f9-KRW-ETH-entry-1776098009936",
+      "exitSignalId": "d44e7a9752fd44d3bed401aa9a9a2d57-KRW-ETH-exit-1776100934959",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-163501Z-811e3df9/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-13/session=paper-20260413-172318Z-fa802493/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-5db06f3d49f743e2a59256cb6f5e96f9-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-d44e7a9752fd44d3bed401aa9a9a2d57-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.870697,
+        "depth_ratio_l5": 2.320788,
+        "ret_1m_bps": 18.137848,
+        "ret_5m_bps": 24.198427,
+        "spread_bps": 3.017957,
+        "turnover_24h_krw": 46676497903.44763,
+        "window_coverage_sec": 56.469
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.950529,
+        "depth_ratio_l5": 2.485823,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": 6.045949,
+        "spread_bps": 3.021604,
+        "turnover_24h_krw": 47866666032.31528,
+        "window_coverage_sec": 10.888
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 75559.2,
+      "marketStartToEndPctDuringHold": -0.12070006035003189,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T00:18:59Z",
+      "exitOccurredAt": "2026-04-14T00:44:44.000Z",
+      "holdMinutes": 25.75,
+      "grossPnlKrw": -760.5435152962988,
+      "netPnlKrw": -1163.2072776737375,
+      "grossBps": -15.098837693353266,
+      "netBps": -23.092798158275926,
+      "entryAvgPrice": 3496639.9115108005,
+      "exitPrice": 3491360.3916612,
+      "entryFeeAllocated": 201.4839898917786,
+      "exitFee": 201.17977248566007,
+      "entrySignalId": "87ccf67114d04d0481ce3bb52a6be203-KRW-ETH-entry-1776125939799",
+      "exitSignalId": "dccbe9f1ee6b476ebfa80c271e7c972e-KRW-ETH-exit-1776127484425",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-002141Z-dc9b0a3a/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-004550Z-b37d5cb3/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-87ccf67114d04d0481ce3bb52a6be203-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-dccbe9f1ee6b476ebfa80c271e7c972e-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.719447,
+        "depth_ratio_l5": 1.417033,
+        "ret_1m_bps": -8.576329,
+        "ret_5m_bps": 22.942357,
+        "spread_bps": 2.860821,
+        "turnover_24h_krw": 83104495292.71724,
+        "window_coverage_sec": 57.345
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.635949,
+        "depth_ratio_l5": 5.620461,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": -2.862049,
+        "spread_bps": 2.863278,
+        "turnover_24h_krw": 83563477132.08972,
+        "window_coverage_sec": 55.378
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503617.792,
+      "marketStartToEndPctDuringHold": -0.05722460658083017,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T03:32:44Z",
+      "exitOccurredAt": "2026-04-14T03:47:59.000Z",
+      "holdMinutes": 15.25,
+      "grossPnlKrw": -14.613163690123706,
+      "netPnlKrw": -26.502694395599757,
+      "grossBps": -9.827794414103971,
+      "netBps": -17.823863296338335,
+      "entryAvgPrice": 3498639.9914565,
+      "exitPrice": 3495201.6,
+      "entryFeeAllocated": 5.947687985476049,
+      "exitFee": 5.9418427199999995,
+      "entrySignalId": "6f1a5b3b3bb74e3a990272abb7656eda-KRW-ETH-entry-1776137564969",
+      "exitSignalId": "c99fc1d7df854f098289934b48d88984-KRW-ETH-exit-1776138479926",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-033448Z-fad366e8/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-035053Z-80358c76/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-6f1a5b3b3bb74e3a990272abb7656eda-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-c99fc1d7df854f098289934b48d88984-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.949141,
+        "depth_ratio_l5": 2.763877,
+        "ret_1m_bps": 2.860412,
+        "ret_5m_bps": 17.187052,
+        "spread_bps": 2.859185,
+        "turnover_24h_krw": 91757769162.84668,
+        "window_coverage_sec": 58.844
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.715122,
+        "depth_ratio_l5": 1.650305,
+        "ret_1m_bps": -2.858776,
+        "ret_5m_bps": -8.571429,
+        "spread_bps": 2.858368,
+        "turnover_24h_krw": 91910855599.11357,
+        "window_coverage_sec": 56.873
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503561.415,
+      "marketStartToEndPctDuringHold": 0.02859593937660776,
+      "trancheCount": 1
+    },
+    {
+      "market": "KRW-ETH",
+      "entryOccurredAt": "2026-04-14T03:32:44Z",
+      "exitOccurredAt": "2026-04-14T04:13:59.000Z",
+      "holdMinutes": 41.25,
+      "grossPnlKrw": -528.0287810455602,
+      "netPnlKrw": -918.8450305372437,
+      "grossBps": -10.802899206918285,
+      "netBps": -18.798578047235516,
+      "entryAvgPrice": 3498639.9914565,
+      "exitPrice": 3494860.4459376,
+      "entryFeeAllocated": 195.5137305020509,
+      "exitFee": 195.30251898963266,
+      "entrySignalId": "6f1a5b3b3bb74e3a990272abb7656eda-KRW-ETH-entry-1776137564969",
+      "exitSignalId": "0f36270d47bc4e34a100d77f82ac7300-KRW-ETH-exit-1776140039890",
+      "entryReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-033448Z-fad366e8/report.json",
+      "exitReportPath": "/Users/leejam/org-coin/var/paper-sessions/date=2026-04-14/session=paper-20260414-041501Z-363e5f1c/report.json",
+      "entryScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-6f1a5b3b3bb74e3a990272abb7656eda-synthetic-carry_open.json",
+      "exitScenarioPath": "/Users/leejam/org-coin/var/data/replay/scenarios/session-0f36270d47bc4e34a100d77f82ac7300-synthetic-carry_open.json",
+      "entryReasonCodes": [
+        "ENTRY_RET_5M_POS",
+        "ENTRY_FLOW_BUY_60S",
+        "ENTRY_BOOK_IMBALANCE_L5",
+        "ENTRY_SPREAD_OK",
+        "ENTRY_TURNOVER_OK",
+        "ENTRY_CONF_MEDIUM"
+      ],
+      "exitReasonCodes": [
+        "EXIT_TIME_STOP_15M"
+      ],
+      "entryFeatures": {
+        "buy_notional_share_60s": 0.949141,
+        "depth_ratio_l5": 2.763877,
+        "ret_1m_bps": 2.860412,
+        "ret_5m_bps": 17.187052,
+        "spread_bps": 2.859185,
+        "turnover_24h_krw": 91757769162.84668,
+        "window_coverage_sec": 58.844
+      },
+      "exitFeatures": {
+        "buy_notional_share_60s": 0.378731,
+        "depth_ratio_l5": 1.643877,
+        "ret_1m_bps": 0.0,
+        "ret_5m_bps": -5.717553,
+        "spread_bps": 5.719188,
+        "turnover_24h_krw": 91893491646.20929,
+        "window_coverage_sec": 49.141
+      },
+      "entryConfidenceTier": "medium",
+      "entrySizingValue": 503561.415,
+      "marketStartToEndPctDuringHold": -0.02859593937660776,
+      "trancheCount": 1
+    }
+  ]
+}

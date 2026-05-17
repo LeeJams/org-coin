@@ -5,18 +5,23 @@ import { KillSwitch } from "./kill-switch.js";
 import { ReconciliationLedger } from "./ledger.js";
 import { rejectReason, type RejectReason } from "./reject-reason.js";
 import { evaluateRisk } from "./risk-engine.js";
+import { BithumbLiveVenue } from "./live-venue.js";
 import { DryRunVenue, PaperExecutionVenue } from "./paper-simulator.js";
 import type {
   ExecutionMode,
   OrderManager,
   OrderManagerDecision,
+  FillRecord,
+  OrderRecord,
   PortfolioPosition,
   PortfolioState,
+  ReconcileSessionOptions,
   ReconciliationReport,
   RiskPolicy,
   SubmitSignalContext,
   ExecutionVenue,
 } from "./types.js";
+import type { BithumbPrivateClient } from "../live/contracts.js";
 
 interface ManagedOrderManagerOptions {
   mode: ExecutionMode;
@@ -36,6 +41,10 @@ export interface CreateOrderManagerOptions {
   clock?: () => Date;
 }
 
+export interface CreateLiveOrderManagerOptions extends CreateOrderManagerOptions {
+  client: BithumbPrivateClient;
+}
+
 export function createDefaultRiskPolicy(): RiskPolicy {
   return {
     allowedMarkets: ["KRW-BTC", "KRW-ETH", "KRW-XRP"],
@@ -53,6 +62,7 @@ export function createDefaultRiskPolicy(): RiskPolicy {
     maxDailyLoss: 500_000,
     maxOpenOrdersPerMarket: 2,
     maxOperationalRejectStreak: 3,
+    buyFeeReserveRate: 0.001,
   };
 }
 
@@ -193,7 +203,25 @@ class ManagedOrderManager implements OrderManager {
       );
     }
 
-    const result = await this.options.venue.submit(evaluation.orderIntent);
+    let result;
+    try {
+      result = await this.options.venue.submit(evaluation.orderIntent);
+    } catch (error: unknown) {
+      return this.reject(
+        decisionId,
+        signal.signalId,
+        signal.market,
+        [
+          rejectReason(
+            "execution_failed",
+            error instanceof Error
+              ? error.message
+              : "execution venue rejected the order",
+          ),
+        ],
+        now,
+      );
+    }
     this.ledger.recordDecision({
       decisionId,
       signalId: signal.signalId,
@@ -227,12 +255,56 @@ class ManagedOrderManager implements OrderManager {
     const timestamp = cancelledAt ?? (this.options.clock ?? (() => new Date()))().toISOString();
     const cancelled = await this.options.venue.cancel(orderId, reason, timestamp);
     if (cancelled) {
-      this.ledger.recordOrder(cancelled);
+      const existing = this.ledger
+        .getOrders()
+        .find((order) => order.orderId === orderId);
+      const nextOrder =
+        existing === undefined
+          ? cancelled
+          : {
+              ...existing,
+              ...cancelled,
+              signalId:
+                cancelled.signalId.length > 0 ? cancelled.signalId : existing.signalId,
+              market: cancelled.market.length > 0 ? cancelled.market : existing.market,
+              side: existing.side,
+              mode: existing.mode,
+              requestedQuantity:
+                cancelled.requestedQuantity > 0
+                  ? cancelled.requestedQuantity
+                  : existing.requestedQuantity,
+              executedQuantity: Math.max(
+                existing.executedQuantity,
+                cancelled.executedQuantity,
+              ),
+              requestedQuoteNotional:
+                cancelled.requestedQuoteNotional > 0
+                  ? cancelled.requestedQuoteNotional
+                  : existing.requestedQuoteNotional,
+              executedQuoteNotional: Math.max(
+                existing.executedQuoteNotional,
+                cancelled.executedQuoteNotional,
+              ),
+              limitPrice:
+                cancelled.limitPrice > 0 ? cancelled.limitPrice : existing.limitPrice,
+              averageFillPrice:
+                cancelled.averageFillPrice ?? existing.averageFillPrice,
+              feesPaid: Math.max(existing.feesPaid, cancelled.feesPaid),
+              createdAt:
+                cancelled.createdAt.length > 0 ? cancelled.createdAt : existing.createdAt,
+              reduceOnly: existing.reduceOnly,
+              simulated: existing.simulated,
+            };
+      const deltaFills = this.buildCancelDeltaFills(existing, nextOrder);
+      this.ledger.recordOrder(nextOrder);
+      this.ledger.recordFills(deltaFills);
+      this.applyExecutionResult(nextOrder, deltaFills);
+      return nextOrder;
     }
     return cancelled;
   }
 
-  reconcileSession(at?: string): ReconciliationReport {
+  reconcileSession(at?: string, options?: ReconcileSessionOptions): ReconciliationReport {
     const generatedAt =
       at ?? (this.options.clock ?? (() => new Date()))().toISOString();
     const openOrders = this.ledger.getOpenOrders();
@@ -252,7 +324,7 @@ class ManagedOrderManager implements OrderManager {
       );
     }
 
-    if (openPositions.length > 0) {
+    if (openPositions.length > 0 && options?.allowOpenPositions !== true) {
       reasons.push(
         rejectReason(
           "reconciliation_mismatch",
@@ -368,7 +440,7 @@ class ManagedOrderManager implements OrderManager {
       if (order.side === "buy") {
         const currentCost = existing.baseQuantity * existing.avgEntryPrice;
         const nextQuantity = existing.baseQuantity + fill.quantity;
-        const nextCost = currentCost + fill.quoteNotional;
+        const nextCost = currentCost + fill.quoteNotional + fill.feesPaid;
 
         existing.baseQuantity = nextQuantity;
         existing.avgEntryPrice = nextQuantity === 0 ? 0 : nextCost / nextQuantity;
@@ -384,6 +456,45 @@ class ManagedOrderManager implements OrderManager {
 
       this.portfolio.positions[order.market] = existing;
     }
+  }
+
+  private buildCancelDeltaFills(
+    existing: OrderRecord | undefined,
+    nextOrder: OrderRecord,
+  ): FillRecord[] {
+    const previousExecutedQuantity = existing?.executedQuantity ?? 0;
+    const deltaQuantity = nextOrder.executedQuantity - previousExecutedQuantity;
+    if (deltaQuantity <= 1e-12) {
+      return [];
+    }
+
+    const previousQuoteNotional = existing?.executedQuoteNotional ?? 0;
+    const previousFeesPaid = existing?.feesPaid ?? 0;
+    const deltaQuoteNotional =
+      nextOrder.executedQuoteNotional > previousQuoteNotional
+        ? nextOrder.executedQuoteNotional - previousQuoteNotional
+        : (nextOrder.averageFillPrice ?? nextOrder.limitPrice) * deltaQuantity;
+    const deltaFeesPaid = Math.max(nextOrder.feesPaid - previousFeesPaid, 0);
+    const price =
+      deltaQuoteNotional > 0
+        ? deltaQuoteNotional / deltaQuantity
+        : nextOrder.averageFillPrice ?? nextOrder.limitPrice;
+
+    return [
+      {
+        fillId: `${nextOrder.orderId}-cancel-delta-${nextOrder.updatedAt}`,
+        orderId: nextOrder.orderId,
+        signalId: nextOrder.signalId,
+        market: nextOrder.market,
+        side: nextOrder.side,
+        quantity: deltaQuantity,
+        price,
+        quoteNotional: deltaQuoteNotional,
+        feesPaid: deltaFeesPaid,
+        occurredAt: nextOrder.updatedAt,
+        simulated: nextOrder.simulated,
+      },
+    ];
   }
 }
 
@@ -408,6 +519,23 @@ export function createPaperOrderManager(
     mode: "paper",
     policy: mergePolicy(options.policy),
     venue: new PaperExecutionVenue(),
+    portfolio: options.portfolio,
+    ledger: options.ledger,
+    killSwitch: options.killSwitch,
+    clock: options.clock,
+  });
+}
+
+export function createLiveOrderManager(
+  options: CreateLiveOrderManagerOptions,
+): OrderManager {
+  return new ManagedOrderManager({
+    mode: "live",
+    policy: mergePolicy(options.policy),
+    venue: new BithumbLiveVenue({
+      client: options.client,
+      clock: options.clock,
+    }),
     portfolio: options.portfolio,
     ledger: options.ledger,
     killSwitch: options.killSwitch,

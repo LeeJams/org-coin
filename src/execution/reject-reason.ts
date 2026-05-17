@@ -16,6 +16,7 @@ export type RejectReasonCode =
   | "too_many_open_orders"
   | "kill_switch_active"
   | "live_trading_disabled"
+  | "execution_failed"
   | "reconciliation_mismatch"
   | "manual_review_required";
 

@@ -29,15 +29,6 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
 
   const reasons: RejectReason[] = [];
 
-  if (mode === "live") {
-    reasons.push(
-      rejectReason(
-        "live_trading_disabled",
-        "live mode is intentionally disabled in this repo",
-      ),
-    );
-  }
-
   if (!policy.allowedMarkets.includes(signal.market)) {
     reasons.push(
       rejectReason(
@@ -87,37 +78,6 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
     );
   }
 
-  if (snapshot.spreadBps > policy.maxSpreadBps) {
-    reasons.push(
-      rejectReason(
-        "spread_guard_triggered",
-        "spread guard blocked the order",
-        {
-          spreadBps: snapshot.spreadBps,
-          maxSpreadBps: policy.maxSpreadBps,
-        },
-      ),
-    );
-  }
-
-  if (
-    snapshot.depthRatio < policy.minDepthRatio ||
-    snapshot.rolling24hNotional < policy.min24hNotional
-  ) {
-    reasons.push(
-      rejectReason(
-        "liquidity_guard_triggered",
-        "market liquidity checks failed",
-        {
-          depthRatio: snapshot.depthRatio,
-          minDepthRatio: policy.minDepthRatio,
-          rolling24hNotional: snapshot.rolling24hNotional,
-          min24hNotional: policy.min24hNotional,
-        },
-      ),
-    );
-  }
-
   if (portfolio.dailyRealizedPnl <= -policy.maxDailyLoss) {
     reasons.push(
       rejectReason(
@@ -158,16 +118,69 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
   }
 
   const { requestedQuantity, requestedQuoteNotional, reduceOnly } = sizingOutcome;
+  const limitPrice =
+    signal.side === "buy"
+      ? referencePrice * (1 + signal.maxSlippageBps / 10_000)
+      : referencePrice * (1 - signal.maxSlippageBps / 10_000);
+  const worstCaseQuoteNotional =
+    signal.side === "buy" ? requestedQuantity * limitPrice : requestedQuoteNotional;
+  const feeReservedWorstCaseQuoteNotional =
+    signal.side === "buy"
+      ? worstCaseQuoteNotional * (1 + policy.buyFeeReserveRate)
+      : worstCaseQuoteNotional;
+  const enforceEntrySpreadChecks = !(signal.side === "sell" && reduceOnly);
+  const enforceEntryLiquidityChecks = !(signal.side === "sell" && reduceOnly);
+  const enforceEntryNotionalCaps = !(signal.side === "sell" && reduceOnly);
+
+  if (enforceEntrySpreadChecks && snapshot.spreadBps > policy.maxSpreadBps) {
+    reasons.push(
+      rejectReason(
+        "spread_guard_triggered",
+        "spread guard blocked the order",
+        {
+          spreadBps: snapshot.spreadBps,
+          maxSpreadBps: policy.maxSpreadBps,
+        },
+      ),
+    );
+  }
+
+  if (
+    enforceEntryLiquidityChecks &&
+    (snapshot.depthRatio < policy.minDepthRatio ||
+      snapshot.rolling24hNotional < policy.min24hNotional)
+  ) {
+    reasons.push(
+      rejectReason(
+        "liquidity_guard_triggered",
+        "market liquidity checks failed",
+        {
+          depthRatio: snapshot.depthRatio,
+          minDepthRatio: policy.minDepthRatio,
+          rolling24hNotional: snapshot.rolling24hNotional,
+          min24hNotional: policy.min24hNotional,
+        },
+      ),
+    );
+  }
+
+  if (reasons.length > 0) {
+    return reasons;
+  }
+
   const marketExposureCap =
     policy.maxPositionNotionalByMarket[signal.market] ?? policy.maxOrderNotional;
 
-  if (requestedQuoteNotional > policy.maxOrderNotional) {
+  if (
+    enforceEntryNotionalCaps &&
+    feeReservedWorstCaseQuoteNotional > policy.maxOrderNotional
+  ) {
     reasons.push(
       rejectReason(
         "max_order_notional_exceeded",
         "order notional exceeds the configured cap",
         {
-          requestedQuoteNotional,
+          requestedQuoteNotional: feeReservedWorstCaseQuoteNotional,
           maxOrderNotional: policy.maxOrderNotional,
         },
       ),
@@ -176,7 +189,7 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
 
   if (
     signal.side === "buy" &&
-    currentExposure + requestedQuoteNotional > marketExposureCap
+    currentExposure + feeReservedWorstCaseQuoteNotional > marketExposureCap
   ) {
     reasons.push(
       rejectReason(
@@ -184,18 +197,21 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
         "position cap would be exceeded by this order",
         {
           currentExposure,
-          requestedQuoteNotional,
+          requestedQuoteNotional: feeReservedWorstCaseQuoteNotional,
           marketExposureCap,
         },
       ),
     );
   }
 
-  if (signal.side === "buy" && requestedQuoteNotional > portfolio.cashAvailable) {
+  if (
+    signal.side === "buy" &&
+    feeReservedWorstCaseQuoteNotional > portfolio.cashAvailable
+  ) {
     reasons.push(
       rejectReason("insufficient_cash", "cash balance is insufficient", {
         cashAvailable: portfolio.cashAvailable,
-        requestedQuoteNotional,
+        requestedQuoteNotional: feeReservedWorstCaseQuoteNotional,
       }),
     );
   }
@@ -219,11 +235,6 @@ export function evaluateRisk(input: RiskEvaluationInput): RiskApproval | RejectR
   if (reasons.length > 0) {
     return reasons;
   }
-
-  const limitPrice =
-    signal.side === "buy"
-      ? referencePrice * (1 + signal.maxSlippageBps / 10_000)
-      : referencePrice * (1 - signal.maxSlippageBps / 10_000);
 
   const orderIntent: OrderIntent = {
     orderId,

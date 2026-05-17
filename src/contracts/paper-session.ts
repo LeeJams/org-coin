@@ -33,9 +33,45 @@ export interface PaperSessionScenarioSummary {
   signalCount: number;
   entrySignalCount: number;
   exitSignalCount: number;
+  entryEvaluationBucketCount?: number;
+  entrySuppressedCandidateCount?: number;
+  entryBlockedOpenPositionBucketCount?: number;
+  entryBlockedAfterExitBucketCount?: number;
+  entryBelowMinNotionalCount?: number;
   syntheticCloseCount: number;
   marketsTraded: string[];
   suppressedByReason: Record<string, number>;
+  entrySuppressedByGateFailure?: Record<string, number>;
+  entrySuppressedGateFailureCombinations?: Record<string, number>;
+  entrySuppressedGateFailureStats?: Record<
+    string,
+    {
+      count: number;
+      avgActual: number;
+      avgThreshold: number;
+      avgDeficit: number;
+      maxDeficit: number;
+      nearMissCount?: number;
+      nearMissRate?: number;
+    }
+  >;
+  suppressedEntrySamples?: Array<{
+    market: string;
+    asOf: string;
+    eventTimestampMs: number;
+    suppressionReason: string;
+    requestedQuoteNotionalKrw: number;
+    bestAskPrice: number;
+    bestBidPrice: number;
+    lastTradePrice: number;
+    featureSnapshot: Record<string, number | null>;
+    failingGates: Array<{
+      field: string;
+      comparator: string;
+      actual: number;
+      threshold: number;
+    }>;
+  }>;
 }
 
 export interface PaperSessionScenarioMetadata {
@@ -44,7 +80,22 @@ export interface PaperSessionScenarioMetadata {
   strategyId?: string;
   modeIntent?: ExecutionMode;
   initialCashKrw?: number;
+  initialEquityKrw?: number;
   aggressiveNotionalFraction?: number;
+  entryProfile?: string;
+  exitProfile?: string;
+  syntheticExitPolicy?: string;
+  carryOpenPositions?: boolean;
+  openPositionState?: {
+    market: string;
+    enteredAtMs: number;
+    entryPrice: number;
+    quantity: number;
+    quoteNotional: number;
+    consecutiveNegativeRet1m: number;
+    consecutiveBookFailures: number;
+    peakBidPrice: number;
+  } | null;
   eligibilityNote?: string;
   summary?: PaperSessionScenarioSummary;
 }
@@ -248,12 +299,21 @@ function validateScenarioSummary(
     input,
     [
       "snapshotCount",
-      "signalCount",
-      "entrySignalCount",
-      "exitSignalCount",
-      "syntheticCloseCount",
-      "marketsTraded",
-      "suppressedByReason",
+        "signalCount",
+        "entrySignalCount",
+        "exitSignalCount",
+        "entryEvaluationBucketCount",
+        "entrySuppressedCandidateCount",
+        "entryBlockedOpenPositionBucketCount",
+        "entryBlockedAfterExitBucketCount",
+        "entryBelowMinNotionalCount",
+        "syntheticCloseCount",
+        "marketsTraded",
+        "suppressedByReason",
+        "entrySuppressedByGateFailure",
+        "entrySuppressedGateFailureCombinations",
+        "entrySuppressedGateFailureStats",
+        "suppressedEntrySamples",
     ],
     "metadata.summary",
     issues,
@@ -263,9 +323,23 @@ function validateScenarioSummary(
   const signalCount = asFiniteNumber(input.signalCount);
   const entrySignalCount = asFiniteNumber(input.entrySignalCount);
   const exitSignalCount = asFiniteNumber(input.exitSignalCount);
+  const entryEvaluationBucketCount = asFiniteNumber(input.entryEvaluationBucketCount);
+  const entrySuppressedCandidateCount = asFiniteNumber(input.entrySuppressedCandidateCount);
+  const entryBlockedOpenPositionBucketCount = asFiniteNumber(
+    input.entryBlockedOpenPositionBucketCount,
+  );
+  const entryBlockedAfterExitBucketCount = asFiniteNumber(
+    input.entryBlockedAfterExitBucketCount,
+  );
+  const entryBelowMinNotionalCount = asFiniteNumber(input.entryBelowMinNotionalCount);
   const syntheticCloseCount = asFiniteNumber(input.syntheticCloseCount);
   const marketsTraded = input.marketsTraded;
   const suppressedByReason = input.suppressedByReason;
+  const entrySuppressedByGateFailure = input.entrySuppressedByGateFailure;
+  const entrySuppressedGateFailureCombinations =
+    input.entrySuppressedGateFailureCombinations;
+  const entrySuppressedGateFailureStats = input.entrySuppressedGateFailureStats;
+  const suppressedEntrySamples = input.suppressedEntrySamples;
 
   const countFields = [
     ["snapshotCount", snapshotCount],
@@ -280,6 +354,23 @@ function validateScenarioSummary(
       issues.push({
         path: `metadata.summary.${field}`,
         message: `${field} must be a non-negative integer`,
+      });
+    }
+  }
+
+  const optionalCountFields = [
+    ["entryEvaluationBucketCount", entryEvaluationBucketCount],
+    ["entrySuppressedCandidateCount", entrySuppressedCandidateCount],
+    ["entryBlockedOpenPositionBucketCount", entryBlockedOpenPositionBucketCount],
+    ["entryBlockedAfterExitBucketCount", entryBlockedAfterExitBucketCount],
+    ["entryBelowMinNotionalCount", entryBelowMinNotionalCount],
+  ] as const;
+
+  for (const [field, value] of optionalCountFields) {
+    if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
+      issues.push({
+        path: `metadata.summary.${field}`,
+        message: `${field} must be a non-negative integer when provided`,
       });
     }
   }
@@ -317,6 +408,248 @@ function validateScenarioSummary(
     }
   }
 
+  let normalizedEntrySuppressedByGateFailure: Record<string, number> | undefined;
+  if (entrySuppressedByGateFailure !== undefined) {
+    if (!isRecord(entrySuppressedByGateFailure)) {
+      issues.push({
+        path: "metadata.summary.entrySuppressedByGateFailure",
+        message: "entrySuppressedByGateFailure must be an object keyed by gate field",
+      });
+    } else {
+      normalizedEntrySuppressedByGateFailure = {};
+      for (const [field, value] of Object.entries(entrySuppressedByGateFailure)) {
+        const count = asFiniteNumber(value);
+        if (count === undefined || !Number.isInteger(count) || count < 0) {
+          issues.push({
+            path: `metadata.summary.entrySuppressedByGateFailure.${field}`,
+            message: "gate failure counts must be non-negative integers",
+          });
+          continue;
+        }
+
+        normalizedEntrySuppressedByGateFailure[field] = count;
+      }
+    }
+  }
+
+  let normalizedEntrySuppressedGateFailureCombinations: Record<string, number> | undefined;
+  if (entrySuppressedGateFailureCombinations !== undefined) {
+    if (!isRecord(entrySuppressedGateFailureCombinations)) {
+      issues.push({
+        path: "metadata.summary.entrySuppressedGateFailureCombinations",
+        message: "entrySuppressedGateFailureCombinations must be an object keyed by gate set",
+      });
+    } else {
+      normalizedEntrySuppressedGateFailureCombinations = {};
+      for (const [fieldSet, value] of Object.entries(
+        entrySuppressedGateFailureCombinations,
+      )) {
+        const count = asFiniteNumber(value);
+        if (count === undefined || !Number.isInteger(count) || count < 0) {
+          issues.push({
+            path: `metadata.summary.entrySuppressedGateFailureCombinations.${fieldSet}`,
+            message: "gate failure combination counts must be non-negative integers",
+          });
+          continue;
+        }
+
+        normalizedEntrySuppressedGateFailureCombinations[fieldSet] = count;
+      }
+    }
+  }
+
+  let normalizedEntrySuppressedGateFailureStats:
+    | NonNullable<PaperSessionScenarioSummary["entrySuppressedGateFailureStats"]>
+    | undefined;
+  if (entrySuppressedGateFailureStats !== undefined) {
+    if (!isRecord(entrySuppressedGateFailureStats)) {
+      issues.push({
+        path: "metadata.summary.entrySuppressedGateFailureStats",
+        message: "entrySuppressedGateFailureStats must be an object keyed by gate field",
+      });
+    } else {
+      normalizedEntrySuppressedGateFailureStats = {};
+      for (const [field, value] of Object.entries(entrySuppressedGateFailureStats)) {
+        if (!isRecord(value)) {
+          issues.push({
+            path: `metadata.summary.entrySuppressedGateFailureStats.${field}`,
+            message: "gate failure stats must be an object",
+          });
+          continue;
+        }
+
+        const count = asFiniteNumber(value.count);
+        const avgActual = asFiniteNumber(value.avgActual);
+        const avgThreshold = asFiniteNumber(value.avgThreshold);
+        const avgDeficit = asFiniteNumber(value.avgDeficit);
+        const maxDeficit = asFiniteNumber(value.maxDeficit);
+        const nearMissCount = asFiniteNumber(value.nearMissCount);
+        const nearMissRate = asFiniteNumber(value.nearMissRate);
+        if (
+          count === undefined ||
+          !Number.isInteger(count) ||
+          count < 0 ||
+          avgActual === undefined ||
+          avgThreshold === undefined ||
+          avgDeficit === undefined ||
+          avgDeficit < 0 ||
+          maxDeficit === undefined ||
+          maxDeficit < 0 ||
+          (nearMissCount !== undefined &&
+            (!Number.isInteger(nearMissCount) ||
+              nearMissCount < 0 ||
+              nearMissCount > count)) ||
+          (nearMissRate !== undefined && (nearMissRate < 0 || nearMissRate > 1))
+        ) {
+          issues.push({
+            path: `metadata.summary.entrySuppressedGateFailureStats.${field}`,
+            message:
+              "gate failure stats require non-negative count/deficit, finite average values, and valid near-miss values",
+          });
+          continue;
+        }
+
+        normalizedEntrySuppressedGateFailureStats[field] = {
+          count,
+          avgActual,
+          avgThreshold,
+          avgDeficit,
+          maxDeficit,
+          ...(nearMissCount !== undefined ? { nearMissCount } : {}),
+          ...(nearMissRate !== undefined ? { nearMissRate } : {}),
+        };
+      }
+    }
+  }
+
+  let normalizedSuppressedEntrySamples:
+    | NonNullable<PaperSessionScenarioSummary["suppressedEntrySamples"]>
+    | undefined;
+  if (suppressedEntrySamples !== undefined) {
+    if (!Array.isArray(suppressedEntrySamples)) {
+      issues.push({
+        path: "metadata.summary.suppressedEntrySamples",
+        message: "suppressedEntrySamples must be an array when provided",
+      });
+    } else {
+      normalizedSuppressedEntrySamples = [];
+      suppressedEntrySamples.forEach((sample, index) => {
+        if (!isRecord(sample)) {
+          issues.push({
+            path: `metadata.summary.suppressedEntrySamples.${index}`,
+            message: "suppressed entry samples must be objects",
+          });
+          return;
+        }
+
+        const market = asNonEmptyString(sample.market);
+        const asOf = isIsoTimestamp(sample.asOf) ? sample.asOf : undefined;
+        const eventTimestampMs = asFiniteNumber(sample.eventTimestampMs);
+        const suppressionReason = asNonEmptyString(sample.suppressionReason);
+        const requestedQuoteNotionalKrw = asFiniteNumber(
+          sample.requestedQuoteNotionalKrw,
+        );
+        const bestAskPrice = asFiniteNumber(sample.bestAskPrice);
+        const bestBidPrice = asFiniteNumber(sample.bestBidPrice);
+        const lastTradePrice = asFiniteNumber(sample.lastTradePrice);
+        if (
+          market === undefined ||
+          asOf === undefined ||
+          eventTimestampMs === undefined ||
+          !Number.isInteger(eventTimestampMs) ||
+          eventTimestampMs < 0 ||
+          suppressionReason === undefined ||
+          requestedQuoteNotionalKrw === undefined ||
+          requestedQuoteNotionalKrw < 0 ||
+          bestAskPrice === undefined ||
+          bestAskPrice <= 0 ||
+          bestBidPrice === undefined ||
+          bestBidPrice <= 0 ||
+          lastTradePrice === undefined ||
+          lastTradePrice <= 0
+        ) {
+          issues.push({
+            path: `metadata.summary.suppressedEntrySamples.${index}`,
+            message:
+              "suppressed entry samples require market/asOf/reason, positive prices, non-negative notional, and non-negative integer eventTimestampMs",
+          });
+          return;
+        }
+
+        if (!isRecord(sample.featureSnapshot)) {
+          issues.push({
+            path: `metadata.summary.suppressedEntrySamples.${index}.featureSnapshot`,
+            message: "featureSnapshot must be an object",
+          });
+          return;
+        }
+        const featureSnapshot: Record<string, number | null> = {};
+        for (const [feature, value] of Object.entries(sample.featureSnapshot)) {
+          const normalizedValue = value === null ? null : asFiniteNumber(value);
+          if (normalizedValue === undefined) {
+            issues.push({
+              path: `metadata.summary.suppressedEntrySamples.${index}.featureSnapshot.${feature}`,
+              message: "featureSnapshot values must be finite numbers or null",
+            });
+            continue;
+          }
+          featureSnapshot[feature] = normalizedValue;
+        }
+
+        if (!Array.isArray(sample.failingGates)) {
+          issues.push({
+            path: `metadata.summary.suppressedEntrySamples.${index}.failingGates`,
+            message: "failingGates must be an array",
+          });
+          return;
+        }
+        const failingGates: NonNullable<
+          PaperSessionScenarioSummary["suppressedEntrySamples"]
+        >[number]["failingGates"] = [];
+        sample.failingGates.forEach((gate, gateIndex) => {
+          if (!isRecord(gate)) {
+            issues.push({
+              path: `metadata.summary.suppressedEntrySamples.${index}.failingGates.${gateIndex}`,
+              message: "failing gate entries must be objects",
+            });
+            return;
+          }
+          const field = asNonEmptyString(gate.field);
+          const comparator = asNonEmptyString(gate.comparator);
+          const actual = asFiniteNumber(gate.actual);
+          const threshold = asFiniteNumber(gate.threshold);
+          if (
+            field === undefined ||
+            comparator === undefined ||
+            actual === undefined ||
+            threshold === undefined
+          ) {
+            issues.push({
+              path: `metadata.summary.suppressedEntrySamples.${index}.failingGates.${gateIndex}`,
+              message:
+                "failing gate entries require field, comparator, actual, and threshold",
+            });
+            return;
+          }
+          failingGates.push({ field, comparator, actual, threshold });
+        });
+
+        normalizedSuppressedEntrySamples!.push({
+          market,
+          asOf,
+          eventTimestampMs,
+          suppressionReason,
+          requestedQuoteNotionalKrw,
+          bestAskPrice,
+          bestBidPrice,
+          lastTradePrice,
+          featureSnapshot,
+          failingGates,
+        });
+      });
+    }
+  }
+
   if (issues.length > 0) {
     return { ok: false, issues };
   }
@@ -328,9 +661,33 @@ function validateScenarioSummary(
       signalCount: signalCount!,
       entrySignalCount: entrySignalCount!,
       exitSignalCount: exitSignalCount!,
+      ...(entryEvaluationBucketCount !== undefined ? { entryEvaluationBucketCount } : {}),
+      ...(entrySuppressedCandidateCount !== undefined ? { entrySuppressedCandidateCount } : {}),
+      ...(entryBlockedOpenPositionBucketCount !== undefined
+        ? { entryBlockedOpenPositionBucketCount }
+        : {}),
+      ...(entryBlockedAfterExitBucketCount !== undefined
+        ? { entryBlockedAfterExitBucketCount }
+        : {}),
+      ...(entryBelowMinNotionalCount !== undefined ? { entryBelowMinNotionalCount } : {}),
       syntheticCloseCount: syntheticCloseCount!,
       marketsTraded: [...(marketsTraded as string[])],
       suppressedByReason: normalizedSuppressedByReason,
+      ...(normalizedEntrySuppressedByGateFailure !== undefined
+        ? { entrySuppressedByGateFailure: normalizedEntrySuppressedByGateFailure }
+        : {}),
+      ...(normalizedEntrySuppressedGateFailureCombinations !== undefined
+        ? {
+            entrySuppressedGateFailureCombinations:
+              normalizedEntrySuppressedGateFailureCombinations,
+          }
+        : {}),
+      ...(normalizedEntrySuppressedGateFailureStats !== undefined
+        ? { entrySuppressedGateFailureStats: normalizedEntrySuppressedGateFailureStats }
+        : {}),
+      ...(normalizedSuppressedEntrySamples !== undefined
+        ? { suppressedEntrySamples: normalizedSuppressedEntrySamples }
+        : {}),
     },
   };
 }
@@ -354,7 +711,13 @@ function validateScenarioMetadata(
       "strategyId",
       "modeIntent",
       "initialCashKrw",
+      "initialEquityKrw",
       "aggressiveNotionalFraction",
+      "entryProfile",
+      "exitProfile",
+      "syntheticExitPolicy",
+      "carryOpenPositions",
+      "openPositionState",
       "eligibilityNote",
       "summary",
     ],
@@ -367,7 +730,15 @@ function validateScenarioMetadata(
   const strategyId = asNonEmptyString(input.strategyId);
   const modeIntent = input.modeIntent;
   const initialCashKrw = asFiniteNumber(input.initialCashKrw);
+  const initialEquityKrw = asFiniteNumber(input.initialEquityKrw);
   const aggressiveNotionalFraction = asFiniteNumber(input.aggressiveNotionalFraction);
+  const entryProfile = asNonEmptyString(input.entryProfile);
+  const exitProfile = asNonEmptyString(input.exitProfile);
+  const syntheticExitPolicy = asNonEmptyString(input.syntheticExitPolicy);
+  const carryOpenPositions =
+    input.carryOpenPositions === undefined
+      ? undefined
+      : input.carryOpenPositions === true;
   const eligibilityNote = asNonEmptyString(input.eligibilityNote);
 
   if (generatedAt !== undefined && !isIsoTimestamp(generatedAt)) {
@@ -406,6 +777,16 @@ function validateScenarioMetadata(
   }
 
   if (
+    input.initialEquityKrw !== undefined &&
+    (initialEquityKrw === undefined || initialEquityKrw < 0)
+  ) {
+    issues.push({
+      path: "metadata.initialEquityKrw",
+      message: "initialEquityKrw must be a non-negative number",
+    });
+  }
+
+  if (
     input.aggressiveNotionalFraction !== undefined &&
     (
       aggressiveNotionalFraction === undefined ||
@@ -417,6 +798,148 @@ function validateScenarioMetadata(
       path: "metadata.aggressiveNotionalFraction",
       message: "aggressiveNotionalFraction must be between 0 and 1",
     });
+  }
+
+  if (input.entryProfile !== undefined && !entryProfile) {
+    issues.push({
+      path: "metadata.entryProfile",
+      message: "entryProfile must be a non-empty string",
+    });
+  }
+
+  if (input.exitProfile !== undefined && !exitProfile) {
+    issues.push({
+      path: "metadata.exitProfile",
+      message: "exitProfile must be a non-empty string",
+    });
+  }
+
+  if (input.syntheticExitPolicy !== undefined && !syntheticExitPolicy) {
+    issues.push({
+      path: "metadata.syntheticExitPolicy",
+      message: "syntheticExitPolicy must be a non-empty string",
+    });
+  }
+
+  if (
+    input.carryOpenPositions !== undefined &&
+    typeof input.carryOpenPositions !== "boolean"
+  ) {
+    issues.push({
+      path: "metadata.carryOpenPositions",
+      message: "carryOpenPositions must be a boolean",
+    });
+  }
+
+  let openPositionState: PaperSessionScenarioMetadata["openPositionState"];
+  if (input.openPositionState !== undefined && input.openPositionState !== null) {
+    if (!isRecord(input.openPositionState)) {
+      issues.push({
+        path: "metadata.openPositionState",
+        message: "openPositionState must be an object",
+      });
+    } else {
+      const market = asNonEmptyString(input.openPositionState.market);
+      const enteredAtMs = asFiniteNumber(input.openPositionState.enteredAtMs);
+      const entryPrice = asFiniteNumber(input.openPositionState.entryPrice);
+      const quantity = asFiniteNumber(input.openPositionState.quantity);
+      const quoteNotional = asFiniteNumber(input.openPositionState.quoteNotional);
+      const consecutiveNegativeRet1m = asFiniteNumber(
+        input.openPositionState.consecutiveNegativeRet1m,
+      );
+      const consecutiveBookFailures = asFiniteNumber(
+        input.openPositionState.consecutiveBookFailures,
+      );
+      const peakBidPrice = asFiniteNumber(input.openPositionState.peakBidPrice);
+
+      if (!market) {
+        issues.push({
+          path: "metadata.openPositionState.market",
+          message: "market must be a non-empty string",
+        });
+      }
+
+      if (enteredAtMs === undefined || enteredAtMs < 0) {
+        issues.push({
+          path: "metadata.openPositionState.enteredAtMs",
+          message: "enteredAtMs must be a non-negative number",
+        });
+      }
+
+      if (entryPrice === undefined || entryPrice <= 0) {
+        issues.push({
+          path: "metadata.openPositionState.entryPrice",
+          message: "entryPrice must be a positive number",
+        });
+      }
+
+      if (quantity === undefined || quantity <= 0) {
+        issues.push({
+          path: "metadata.openPositionState.quantity",
+          message: "quantity must be a positive number",
+        });
+      }
+
+      if (quoteNotional === undefined || quoteNotional < 0) {
+        issues.push({
+          path: "metadata.openPositionState.quoteNotional",
+          message: "quoteNotional must be a non-negative number",
+        });
+      }
+
+      if (
+        consecutiveNegativeRet1m === undefined ||
+        !Number.isInteger(consecutiveNegativeRet1m) ||
+        consecutiveNegativeRet1m < 0
+      ) {
+        issues.push({
+          path: "metadata.openPositionState.consecutiveNegativeRet1m",
+          message: "consecutiveNegativeRet1m must be a non-negative integer",
+        });
+      }
+
+      if (
+        consecutiveBookFailures === undefined ||
+        !Number.isInteger(consecutiveBookFailures) ||
+        consecutiveBookFailures < 0
+      ) {
+        issues.push({
+          path: "metadata.openPositionState.consecutiveBookFailures",
+          message: "consecutiveBookFailures must be a non-negative integer",
+        });
+      }
+
+      if (peakBidPrice === undefined || peakBidPrice <= 0) {
+        issues.push({
+          path: "metadata.openPositionState.peakBidPrice",
+          message: "peakBidPrice must be a positive number",
+        });
+      }
+
+      if (
+        market &&
+        enteredAtMs !== undefined &&
+        entryPrice !== undefined &&
+        quantity !== undefined &&
+        quoteNotional !== undefined &&
+        consecutiveNegativeRet1m !== undefined &&
+        consecutiveBookFailures !== undefined &&
+        peakBidPrice !== undefined
+      ) {
+        openPositionState = {
+          market,
+          enteredAtMs,
+          entryPrice,
+          quantity,
+          quoteNotional,
+          consecutiveNegativeRet1m,
+          consecutiveBookFailures,
+          peakBidPrice,
+        };
+      }
+    }
+  } else if (input.openPositionState === null) {
+    openPositionState = null;
   }
 
   if (input.eligibilityNote !== undefined && !eligibilityNote) {
@@ -448,7 +971,13 @@ function validateScenarioMetadata(
       strategyId,
       modeIntent: modeIntent as ExecutionMode | undefined,
       initialCashKrw,
+      initialEquityKrw,
       aggressiveNotionalFraction,
+      entryProfile,
+      exitProfile,
+      syntheticExitPolicy,
+      carryOpenPositions,
+      openPositionState,
       eligibilityNote,
       summary,
     },
@@ -614,6 +1143,43 @@ export function validatePaperSessionScenario(
           path: `${path}.type`,
           message: "type must be one of 'snapshot', 'signal', or 'cancel'",
         });
+    }
+  }
+
+  if (validatedMetadata?.summary !== undefined) {
+    const summary = validatedMetadata.summary;
+    const actualSnapshotCount = normalizedEvents.filter(
+      (event) => event.type === "snapshot",
+    ).length;
+    const signalEvents = normalizedEvents.filter(
+      (event): event is PaperSessionSignalEvent => event.type === "signal",
+    );
+    const actualEntrySignalCount = signalEvents.filter(
+      (event) => event.signal.side === "buy",
+    ).length;
+    const actualExitSignalCount = signalEvents.filter(
+      (event) => event.signal.side === "sell",
+    ).length;
+    const actualSyntheticCloseCount = signalEvents.filter(
+      (event) =>
+        event.signal.side === "sell" &&
+        event.signal.signalId.includes("synthetic-exit"),
+    ).length;
+    const summaryChecks = [
+      ["snapshotCount", summary.snapshotCount, actualSnapshotCount],
+      ["signalCount", summary.signalCount, signalEvents.length],
+      ["entrySignalCount", summary.entrySignalCount, actualEntrySignalCount],
+      ["exitSignalCount", summary.exitSignalCount, actualExitSignalCount],
+      ["syntheticCloseCount", summary.syntheticCloseCount, actualSyntheticCloseCount],
+    ] as const;
+
+    for (const [field, reported, actual] of summaryChecks) {
+      if (reported !== actual) {
+        issues.push({
+          path: `metadata.summary.${field}`,
+          message: `${field} must match the scenario event stream; reported ${reported}, actual ${actual}`,
+        });
+      }
     }
   }
 

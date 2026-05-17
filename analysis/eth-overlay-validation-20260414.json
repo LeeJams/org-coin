@@ -1,0 +1,149 @@
+{
+  "baseline": {
+    "sessionCount": 153,
+    "tradedSessionCount": 20,
+    "buyFillCount": 10,
+    "sellFillCount": 10,
+    "closedTradeCount": 10,
+    "profitableClosedTrades": 6,
+    "losingClosedTrades": 4,
+    "grossPnlKrw": 9885.523455915678,
+    "netPnlKrw": 7030.75170265622,
+    "avgGrossBpsPerTrade": 25.258032748780536,
+    "avgNetBpsPerTrade": 17.24792953568102,
+    "totalFeesKrw": 3056.1886276993328,
+    "totalBuyNotionalKrw": 4067064.115946052,
+    "totalSellNotionalKrw": 3573407.4533022814,
+    "reentryUnder15mCount": 1,
+    "byMarket": {
+      "KRW-BTC": {
+        "trades": 4,
+        "grossPnlKrw": 8317.828529350081,
+        "netPnlKrw": 7133.351538310393,
+        "avgGrossBps": 62.53382305811289,
+        "avgNetBps": 54.50880952888964
+      },
+      "KRW-ETH": {
+        "trades": 6,
+        "grossPnlKrw": 1567.6949265655971,
+        "netPnlKrw": -102.59983565417349,
+        "avgGrossBps": 0.40750587589230136,
+        "avgNetBps": -7.592657126458057
+      }
+    },
+    "byExitReason": {
+      "EXIT_RET_1M_NEG": {
+        "trades": 6,
+        "gross": 11358.052758879374,
+        "net": 9369.053799400399
+      },
+      "EXIT_TIME_STOP_15M": {
+        "trades": 4,
+        "gross": -1472.529302963693,
+        "net": -2338.3020967441807
+      }
+    },
+    "holdBuckets": {
+      "<=5m": {
+        "trades": 0,
+        "gross": 0.0,
+        "net": 0.0
+      },
+      "5-15m": {
+        "trades": 0,
+        "gross": 0.0,
+        "net": 0.0
+      },
+      ">15m": {
+        "trades": 10,
+        "gross": 9885.523455915678,
+        "net": 7030.75170265622
+      }
+    },
+    "finalEquityKrw": 1005437.093358537,
+    "runCumulativeReturnPct": 0.5437093358537037
+  },
+  "candidate": {
+    "sessionCount": 153,
+    "tradedSessionCount": 20,
+    "buyFillCount": 10,
+    "sellFillCount": 10,
+    "closedTradeCount": 10,
+    "profitableClosedTrades": 6,
+    "losingClosedTrades": 4,
+    "grossPnlKrw": 9235.631619629561,
+    "netPnlKrw": 6381.581313005839,
+    "avgGrossBpsPerTrade": 23.96913493569297,
+    "avgNetBpsPerTrade": 15.959547281718695,
+    "totalFeesKrw": 3055.337333830202,
+    "totalBuyNotionalKrw": 4066162.6354860407,
+    "totalSellNotionalKrw": 3572180.6990894657,
+    "reentryUnder15mCount": 1,
+    "byMarket": {
+      "KRW-BTC": {
+        "trades": 4,
+        "grossPnlKrw": 8317.828529350081,
+        "netPnlKrw": 7133.351538310393,
+        "avgGrossBps": 62.53382305811289,
+        "avgNetBps": 54.50880952888964
+      },
+      "KRW-ETH": {
+        "trades": 6,
+        "grossPnlKrw": 917.8030902794792,
+        "netPnlKrw": -751.7702253045534,
+        "avgGrossBps": -1.740657145920304,
+        "avgNetBps": -9.739960883061936
+      }
+    },
+    "byExitReason": {
+      "EXIT_RET_1M_NEG": {
+        "trades": 6,
+        "gross": 11357.242887836113,
+        "net": 9368.50374863786
+      },
+      "EXIT_TIME_STOP_15M": {
+        "trades": 4,
+        "gross": -2121.6112682065504,
+        "net": -2986.922435632022
+      }
+    },
+    "holdBuckets": {
+      "<=5m": {
+        "trades": 0,
+        "gross": 0.0,
+        "net": 0.0
+      },
+      "5-15m": {
+        "trades": 1,
+        "gross": -14.613163690123706,
+        "net": -26.502694395599754
+      },
+      ">15m": {
+        "trades": 9,
+        "gross": 9250.244783319686,
+        "net": 6408.084007401439
+      }
+    },
+    "finalEquityKrw": 1004788.9661081566,
+    "runCumulativeReturnPct": 0.47889661081566004,
+    "failures": [],
+    "scenarioAggregate": {
+      "entrySignals": 10,
+      "exitSignals": 76,
+      "snapshotCount": 5817,
+      "syntheticCloseCount": 0,
+      "suppressedByReason": {
+        "SUPPRESS_DATA_STALE": 1083,
+        "SUPPRESS_WEAK_CONFLUENCE": 1229
+      }
+    }
+  },
+  "delta": {
+    "netPnlKrw": -649.1703896503814,
+    "grossPnlKrw": -649.8918362861168,
+    "totalFeesKrw": -0.8512938691305862,
+    "closedTradeCount": 0,
+    "runCumulativeReturnPct": -0.0648127250380437,
+    "reentryUnder15mCount": 0
+  }
+}

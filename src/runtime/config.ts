@@ -4,10 +4,12 @@ import { resolve } from "node:path";
 import {
   createDefaultRiskPolicy,
   createDryRunOrderManager,
+  createLiveOrderManager,
   createPaperOrderManager,
   type CreateOrderManagerOptions,
 } from "../execution/order-manager.js";
 import type { ExecutionMode, OrderManager, RiskPolicy } from "../execution/types.js";
+import { createBithumbPrivateClient } from "../live/bithumb.js";
 
 export interface ExecutionRuntimeSecrets {
   bithumbAccessKey?: string;
@@ -20,8 +22,8 @@ export interface ExecutionRuntimeEndpoints {
 }
 
 export interface ExecutionRuntimeConfig {
-  tradingMode: Exclude<ExecutionMode, "live">;
-  enableLiveExecution: false;
+  tradingMode: ExecutionMode;
+  enableLiveExecution: boolean;
   endpoints: ExecutionRuntimeEndpoints;
   secrets: ExecutionRuntimeSecrets;
   riskPolicy: RiskPolicy;
@@ -113,6 +115,27 @@ function parsePositiveNumberRecord(
   );
 }
 
+function parseMarketListOrDefault(
+  value: string | undefined,
+  key: string,
+  fallback: string[],
+): string[] {
+  if (value === undefined || value.trim().length === 0) {
+    return fallback;
+  }
+
+  const markets = value
+    .split(",")
+    .map((market) => market.trim())
+    .filter((market) => market.length > 0);
+
+  if (markets.length === 0) {
+    throw new Error(`${key} must contain at least one market`);
+  }
+
+  return [...new Set(markets)];
+}
+
 export function parseDotenv(contents: string): Record<string, string> {
   const parsed: Record<string, string> = {};
 
@@ -188,15 +211,24 @@ export function loadExecutionRuntimeConfig(
     "ENABLE_LIVE_EXECUTION",
   );
 
-  if (enableLiveExecution) {
+  if (tradingModeRaw === "live" && !enableLiveExecution) {
     throw new Error(
-      "ENABLE_LIVE_EXECUTION=true is not supported in this repo until a dedicated live rollout issue lands",
+      "TRADING_MODE=live requires ENABLE_LIVE_EXECUTION=true",
     );
   }
 
-  if (tradingModeRaw === "live") {
+  if (enableLiveExecution && tradingModeRaw !== "live") {
     throw new Error(
-      "TRADING_MODE=live is intentionally blocked in this repo; keep paper or dry_run until live rollout is approved",
+      "ENABLE_LIVE_EXECUTION=true requires TRADING_MODE=live",
+    );
+  }
+
+  const accessKey = asNonEmptyString(env.BITHUMB_ACCESS_KEY);
+  const secretKey = asNonEmptyString(env.BITHUMB_SECRET_KEY);
+
+  if (tradingModeRaw === "live" && (!accessKey || !secretKey)) {
+    throw new Error(
+      "BITHUMB_ACCESS_KEY and BITHUMB_SECRET_KEY are required when TRADING_MODE=live",
     );
   }
 
@@ -209,6 +241,11 @@ export function loadExecutionRuntimeConfig(
     env.MAX_POSITION_NOTIONAL_BY_MARKET_JSON,
     "MAX_POSITION_NOTIONAL_BY_MARKET_JSON",
   );
+  const paperAllowedMarkets = parseMarketListOrDefault(
+    env.PAPER_ALLOWED_MARKETS ?? env.DRY_RUN_MARKETS,
+    env.PAPER_ALLOWED_MARKETS !== undefined ? "PAPER_ALLOWED_MARKETS" : "DRY_RUN_MARKETS",
+    defaults.allowedMarkets,
+  );
   const basePositionCaps =
     globalPositionCap > 0
       ? Object.fromEntries(
@@ -218,18 +255,22 @@ export function loadExecutionRuntimeConfig(
 
   return {
     tradingMode: tradingModeRaw,
-    enableLiveExecution: false,
+    enableLiveExecution,
     endpoints: {
       bithumbRestBaseUrl:
         asNonEmptyString(env.BITHUMB_REST_BASE_URL) ??
-        "https://api.bithumb.com/v1",
+        "https://api.bithumb.com",
       bithumbWsBaseUrl:
         asNonEmptyString(env.BITHUMB_WS_BASE_URL) ??
         "wss://ws-api.bithumb.com/websocket/v1",
     },
     secrets: {
-      // Live rollout is still blocked in this repo, so do not propagate configured
-      // exchange secrets into paper or dry-run runtime objects.
+      ...(tradingModeRaw === "live"
+        ? {
+            bithumbAccessKey: accessKey,
+            bithumbSecretKey: secretKey,
+          }
+        : {}),
     },
     paperSessionArtifactsDir: resolve(
       cwd,
@@ -261,6 +302,8 @@ export function loadExecutionRuntimeConfig(
         "KILL_SWITCH_REJECT_STREAK",
         defaults.maxOperationalRejectStreak,
       ),
+      allowedMarkets:
+        tradingModeRaw === "live" ? ["KRW-BTC"] : paperAllowedMarkets,
     },
     envFilePath: fileEnv.resolvedPath,
   };
@@ -270,6 +313,22 @@ export function createOrderManagerFromRuntimeConfig(
   config: ExecutionRuntimeConfig,
   options: Omit<CreateOrderManagerOptions, "policy"> = {},
 ): OrderManager {
+  if (config.tradingMode === "live") {
+    if (!config.secrets.bithumbAccessKey || !config.secrets.bithumbSecretKey) {
+      throw new Error("live runtime config is missing Bithumb credentials");
+    }
+
+    return createLiveOrderManager({
+      ...options,
+      policy: config.riskPolicy,
+      client: createBithumbPrivateClient({
+        accessKey: config.secrets.bithumbAccessKey,
+        secretKey: config.secrets.bithumbSecretKey,
+        restBaseUrl: config.endpoints.bithumbRestBaseUrl,
+      }),
+    });
+  }
+
   if (config.tradingMode === "paper") {
     return createPaperOrderManager({
       ...options,

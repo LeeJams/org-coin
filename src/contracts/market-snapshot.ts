@@ -20,7 +20,7 @@ export type MarketSnapshotValidationResult =
   | { ok: true; value: MarketSnapshot }
   | { ok: false; issues: MarketSnapshotValidationIssue[] };
 
-const MARKET_PATTERN = /^[A-Z]{3,10}-[A-Z0-9]{2,20}$/;
+const MARKET_PATTERN = /^[A-Z]{3,10}-[A-Z0-9]{1,20}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

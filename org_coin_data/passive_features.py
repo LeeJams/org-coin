@@ -187,21 +187,18 @@ def materialize_passive_feature_snapshots(base_dir: Path, run_id: str) -> dict:
         base_dir,
         "ticker_event",
         run_id,
-        source="bithumb_rest",
         timestamp_field="event_timestamp_ms",
     )
     orderbook_records = _load_run_records(
         base_dir,
         "orderbook_snapshot",
         run_id,
-        source="bithumb_rest",
         timestamp_field="event_timestamp_ms",
     )
     orderbook_levels = _load_run_records(
         base_dir,
         "orderbook_level",
         run_id,
-        source="bithumb_rest",
         timestamp_field="event_timestamp_ms",
     )
 

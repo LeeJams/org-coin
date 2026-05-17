@@ -23,7 +23,7 @@ EMPTY=
   assert.equal(env.EMPTY, "");
 });
 
-test("loadExecutionRuntimeConfig reads .env values, drops live secrets, and keeps paper defaults for zero sentinels", () => {
+test("loadExecutionRuntimeConfig reads .env values, drops non-live secrets, and keeps paper defaults for zero sentinels", () => {
   const directory = mkdtempSync(join(tmpdir(), "org-coin-runtime-"));
 
   try {
@@ -70,7 +70,7 @@ test("loadExecutionRuntimeConfig reads .env values, drops live secrets, and keep
   }
 });
 
-test("loadExecutionRuntimeConfig rejects live-mode activation", () => {
+test("loadExecutionRuntimeConfig enforces explicit live flag pairing", () => {
   assert.throws(
     () =>
       loadExecutionRuntimeConfig({
@@ -80,7 +80,7 @@ test("loadExecutionRuntimeConfig rejects live-mode activation", () => {
           ENABLE_LIVE_EXECUTION: "true",
         },
       }),
-    /ENABLE_LIVE_EXECUTION=true/,
+    /requires TRADING_MODE=live/,
   );
 
   assert.throws(
@@ -92,6 +92,66 @@ test("loadExecutionRuntimeConfig rejects live-mode activation", () => {
           ENABLE_LIVE_EXECUTION: "false",
         },
       }),
-    /TRADING_MODE=live/,
+    /requires ENABLE_LIVE_EXECUTION=true/,
+  );
+});
+
+test("loadExecutionRuntimeConfig allows BTC-only live mode when secrets are present", () => {
+  const config = loadExecutionRuntimeConfig({
+    envFilePath: null,
+    env: {
+      TRADING_MODE: "live",
+      ENABLE_LIVE_EXECUTION: "true",
+      BITHUMB_ACCESS_KEY: "live-access",
+      BITHUMB_SECRET_KEY: "live-secret",
+    },
+  });
+
+  assert.equal(config.tradingMode, "live");
+  assert.equal(config.enableLiveExecution, true);
+  assert.equal(config.secrets.bithumbAccessKey, "live-access");
+  assert.equal(config.secrets.bithumbSecretKey, "live-secret");
+  assert.deepEqual(config.riskPolicy.allowedMarkets, ["KRW-BTC"]);
+});
+
+test("loadExecutionRuntimeConfig uses configured paper markets outside live mode", () => {
+  const config = loadExecutionRuntimeConfig({
+    envFilePath: null,
+    env: {
+      TRADING_MODE: "paper",
+      ENABLE_LIVE_EXECUTION: "false",
+      DRY_RUN_MARKETS: "KRW-STABLE, KRW-H, KRW-STABLE",
+    },
+  });
+
+  assert.deepEqual(config.riskPolicy.allowedMarkets, ["KRW-STABLE", "KRW-H"]);
+});
+
+test("loadExecutionRuntimeConfig keeps live mode BTC-only despite configured paper markets", () => {
+  const config = loadExecutionRuntimeConfig({
+    envFilePath: null,
+    env: {
+      TRADING_MODE: "live",
+      ENABLE_LIVE_EXECUTION: "true",
+      BITHUMB_ACCESS_KEY: "live-access",
+      BITHUMB_SECRET_KEY: "live-secret",
+      DRY_RUN_MARKETS: "KRW-STABLE",
+    },
+  });
+
+  assert.deepEqual(config.riskPolicy.allowedMarkets, ["KRW-BTC"]);
+});
+
+test("loadExecutionRuntimeConfig rejects live mode without secrets", () => {
+  assert.throws(
+    () =>
+      loadExecutionRuntimeConfig({
+        envFilePath: null,
+        env: {
+          TRADING_MODE: "live",
+          ENABLE_LIVE_EXECUTION: "true",
+        },
+      }),
+    /BITHUMB_ACCESS_KEY/,
   );
 });

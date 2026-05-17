@@ -56,10 +56,11 @@ class PreflightReportTest(unittest.TestCase):
                     {
                         "market": "KRW-ETH",
                         "event_timestamp_ms": 1775284377000,
-                        "ret_5m_bps": 12.0,
-                        "buy_notional_share_60s": 0.58,
+                        "ret_5m_bps": 20.0,
+                        "ret_1m_bps": 6.0,
+                        "buy_notional_share_60s": 0.80,
                         "depth_ratio_l5": 1.28,
-                        "spread_bps": 6.0,
+                        "spread_bps": 5.0,
                         "turnover_24h_krw": 39_000_000_000.0,
                         "window_coverage_sec": 60.0,
                     }
@@ -106,9 +107,9 @@ class PreflightReportTest(unittest.TestCase):
             )
             self.assertEqual(latest_by_market["KRW-ETH"]["outcome"], "eligible_medium")
             self.assertEqual(latest_by_market["KRW-XRP"]["outcome"], "SUPPRESS_WEAK_CONFLUENCE")
-            self.assertEqual(
-                latest_by_market["KRW-XRP"]["failing_gates"][0]["field"],
+            self.assertIn(
                 "turnover_24h_krw",
+                {failure["field"] for failure in latest_by_market["KRW-XRP"]["failing_gates"]},
             )
 
             gate_counts = {
@@ -116,6 +117,7 @@ class PreflightReportTest(unittest.TestCase):
             }
             self.assertEqual(gate_counts["window_coverage_sec"], 1)
             self.assertEqual(gate_counts["turnover_24h_krw"], 1)
+            self.assertEqual(gate_counts["ret_5m_bps"], 2)
 
     def test_build_preflight_report_supports_exploratory_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -134,12 +136,13 @@ class PreflightReportTest(unittest.TestCase):
                     {
                         "market": "KRW-XRP",
                         "event_timestamp_ms": 1775284257000,
-                        "ret_5m_bps": 12.0,
-                        "buy_notional_share_60s": 0.58,
+                        "ret_5m_bps": 20.0,
+                        "ret_1m_bps": 8.0,
+                        "buy_notional_share_60s": 0.80,
                         "depth_ratio_l5": 1.28,
-                        "spread_bps": 6.0,
+                        "spread_bps": 5.0,
                         "turnover_24h_krw": 25_000_000_000.0,
-                        "window_coverage_sec": 40.0,
+                        "window_coverage_sec": 60.0,
                     }
                 ],
             )

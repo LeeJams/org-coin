@@ -10,6 +10,7 @@ from org_coin_data.pipeline import (
     build_quality_report,
     build_replay_manifest,
     build_run_replay_manifest,
+    ingest_market_catalog,
     normalize_orderbook,
     normalize_ticker_event,
     normalize_trade_tick,
@@ -184,6 +185,29 @@ class PipelineTest(unittest.TestCase):
 
         self.assertEqual(len(first), 2)
         self.assertEqual(second, [])
+
+    @patch("org_coin_data.pipeline.append_jsonl")
+    @patch("org_coin_data.pipeline.fetch_market_catalog")
+    def test_ingest_market_catalog_reports_upstream_maintenance_payload(
+        self,
+        fetch_market_catalog_mock,
+        append_jsonl_mock,
+    ) -> None:
+        fetch_market_catalog_mock.return_value = {
+            "status": 999,
+            "data": {
+                "title": "maintenance",
+                "maintenanceStartAt": "2026-04-27 01:00",
+                "maintenanceEndAt": "2026-04-27 06:00",
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            obs = Observability(Path(tmpdir), "run-maintenance", 10_000)
+            with self.assertRaisesRegex(ValueError, "market_catalog upstream returned non-list payload"):
+                ingest_market_catalog(Path(tmpdir), ["KRW-BTC"], obs)
+
+        append_jsonl_mock.assert_called_once()
 
     def test_manifest_summarizes_written_canonical_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

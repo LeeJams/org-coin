@@ -23,6 +23,7 @@ export interface RiskPolicy {
   maxDailyLoss: number;
   maxOpenOrdersPerMarket: number;
   maxOperationalRejectStreak: number;
+  buyFeeReserveRate: number;
 }
 
 export interface PortfolioPosition {
@@ -191,6 +192,10 @@ export interface ReconciliationReport {
   reasons: RejectReason[];
 }
 
+export interface ReconcileSessionOptions {
+  allowOpenPositions?: boolean;
+}
+
 export interface ExecutionVenue {
   submit(orderIntent: OrderIntent): Promise<ExecutionResult>;
   cancel(
@@ -210,7 +215,7 @@ export interface OrderManager {
     reason: string,
     cancelledAt?: string,
   ): Promise<OrderRecord | null>;
-  reconcileSession(at?: string): ReconciliationReport;
+  reconcileSession(at?: string, options?: ReconcileSessionOptions): ReconciliationReport;
   getLedgerSnapshot(): LedgerSnapshot;
   getPortfolioState(): PortfolioState;
 }

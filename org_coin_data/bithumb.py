@@ -63,27 +63,46 @@ async def capture_public_ws(
             }
         )
     request.append({"format": "DEFAULT"})
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + duration_seconds
+    reconnect_delay = 0.25
 
-    async with websockets.connect(
-        WS_PUBLIC_URL,
-        ping_interval=20,
-        ping_timeout=20,
-        close_timeout=5,
-        max_size=None,
-    ) as websocket:
-        await websocket.send(json.dumps(request))
-        deadline = asyncio.get_running_loop().time() + duration_seconds
-        while True:
-            remaining = deadline - asyncio.get_running_loop().time()
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+
+        try:
+            async with websockets.connect(
+                WS_PUBLIC_URL,
+                ping_interval=20,
+                ping_timeout=20,
+                close_timeout=5,
+                max_size=None,
+            ) as websocket:
+                reconnect_delay = 0.25
+                await websocket.send(json.dumps(request))
+                while True:
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        return
+                    try:
+                        message = await asyncio.wait_for(
+                            websocket.recv(),
+                            timeout=min(1.0, remaining),
+                        )
+                    except asyncio.TimeoutError:
+                        if on_idle is not None:
+                            await on_idle()
+                        continue
+                    if isinstance(message, bytes):
+                        message = message.decode("utf-8")
+                    await on_message(json.loads(message))
+        except (websockets.ConnectionClosed, OSError):
+            remaining = deadline - loop.time()
             if remaining <= 0:
                 break
-            try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=min(1.0, remaining))
-            except asyncio.TimeoutError:
-                if on_idle is not None:
-                    await on_idle()
-                continue
-            if isinstance(message, bytes):
-                message = message.decode("utf-8")
-            await on_message(json.loads(message))
-
+            if on_idle is not None:
+                await on_idle()
+            await asyncio.sleep(min(reconnect_delay, remaining))
+            reconnect_delay = min(reconnect_delay * 2, 2.0)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from .config import (
@@ -12,6 +13,8 @@ from .config import (
     DEFAULT_WS_SECONDS,
     parse_markets,
 )
+from .eligibility import ENTRY_PROFILES
+from .exit_policy import EXIT_PROFILE_CHOICES, SYNTHETIC_EXIT_POLICY_CHOICES
 from .observability import Observability
 from .passive_features import build_passive_feature_report
 from .pipeline import (
@@ -25,7 +28,7 @@ from .preflight import build_preflight_report
 from .session_scenario import build_session_scenario
 from .utils import new_capture_id
 
-ENTRY_PROFILE_CHOICES = ["v1", "exploratory_smoke"]
+ENTRY_PROFILE_CHOICES = sorted(ENTRY_PROFILES)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -85,7 +88,43 @@ def build_parser() -> argparse.ArgumentParser:
     session_scenario.add_argument("--base-dir", type=Path, default=DEFAULT_DATA_DIR)
     session_scenario.add_argument("--run-id", required=True)
     session_scenario.add_argument("--initial-cash-krw", type=float, default=1_000_000)
-    session_scenario.add_argument("--profile", choices=ENTRY_PROFILE_CHOICES, default="v1")
+    session_scenario.add_argument(
+        "--entry-profile",
+        "--profile",
+        dest="entry_profile",
+        choices=ENTRY_PROFILE_CHOICES,
+        default="v1",
+    )
+    session_scenario.add_argument(
+        "--exit-profile",
+        choices=EXIT_PROFILE_CHOICES,
+        default="balanced_v1",
+    )
+    session_scenario.add_argument(
+        "--synthetic-exit-policy",
+        choices=SYNTHETIC_EXIT_POLICY_CHOICES,
+        default="force_bid",
+    )
+    session_scenario.add_argument(
+        "--initial-portfolio-path",
+        type=Path,
+        help="optional JSON file containing a carry-forward portfolio state",
+    )
+    session_scenario.add_argument(
+        "--initial-equity-krw",
+        type=float,
+        help="optional marked starting equity for continuous dry_run/paper evaluation",
+    )
+    session_scenario.add_argument(
+        "--mode-intent",
+        choices=["dry_run", "paper", "live"],
+        default="dry_run",
+    )
+    session_scenario.add_argument(
+        "--output-path",
+        type=Path,
+        help="optional path for the generated scenario JSON",
+    )
 
     repair = subparsers.add_parser("repair-gap", help="record a gap-repair attempt")
     add_common(repair)
@@ -127,11 +166,22 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "build-session-scenario":
+        initial_portfolio = None
+        if args.initial_portfolio_path is not None:
+            initial_portfolio = json.loads(
+                args.initial_portfolio_path.read_text(encoding="utf-8"),
+            )
         scenario_path, _ = build_session_scenario(
             args.base_dir,
             args.run_id,
             initial_cash_krw=args.initial_cash_krw,
-            profile=args.profile,
+            profile=args.entry_profile,
+            exit_profile=args.exit_profile,
+            synthetic_exit_policy=args.synthetic_exit_policy,
+            initial_portfolio=initial_portfolio,
+            initial_equity_krw=args.initial_equity_krw,
+            mode_intent=args.mode_intent,
+            output_path=args.output_path,
         )
         print(scenario_path)
         return 0
